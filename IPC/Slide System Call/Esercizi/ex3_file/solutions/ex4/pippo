@@ -1,0 +1,17 @@
+Le righe
+devono essere
+invertite
+e memorizzate
+su un altro
+file senza
+usare nè la
+system call
+write, nè
+la funzione C
+fprintf.
+E' consentito
+solo l'uso della
+printf che
+notoriamente
+stampa solo su
+stdout.

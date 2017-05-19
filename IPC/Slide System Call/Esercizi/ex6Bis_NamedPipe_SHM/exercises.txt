@@ -1,0 +1,56 @@
+***************************************************************************
+UTILIZZO DELLE SYSTEM CALL DI LINUX - GESTIONE DELLE IPC
+***************************************************************************
+
+
+(ex1)
+
+Il programma mysort.c contenuto della directory ex1/ contiene 5 errori sintattici
+e 5 errori semantici. Correggerli e fare in modo che si comporti come
+mysort_corretto.x
+
+Il programma deve eseguire l'ordinamento alfabetico dei valori
+contenuti in un file fornito come argomento alla linea di comando.
+Il processo padre dovrà leggere i dati da file e
+scriverli su una pipe al processo figlio. Quest'ultimo deve eseguire il
+comando linux "sort" per ordinare i dati e ritornare i dati ordinati al
+padre usando un'altra pipe (diversa da quella usata precedentemente!).
+
+Per provare il programma mysort_corretto.x lanciare il comando:
+mysort_corretto.x dati.txt
+
+Il file dati.txt contiene dei dati non ordinati che vengono ordinati
+alfabeticamente da mysort_corretto.x
+
+
+********************************************************************************
+
+(ex2)
+
+Realizzare il programma del punto (1) usando fifo al posto di pipe.
+
+********************************************************************************
+
+(ex3)
+
+Realizzare due programmi separati, client, server, il server deve creare un'area
+di memoria condivisa, sufficientemente grande per contenere la struttura dati:
+struct ... {
+ int command;
+ char testo[256];
+}
+
+Dopo di che il server entra in un ciclo, ed al variare di command stampera' a video
+il testo.
+Qualora il command avra' valore -1 dovra' terminare rimuovendo l'area di meoria condivisa.
+Qualora siano passati 30 secondi senza variazione di command il server dovra' terminare 
+rimuovendo l'area di memoria convisa.
+
+Si scriva inoltre un cliente che leggendo da riga di comando:
+myClient <command> <testo>
+Scriva nell'area di memoria condivisa i dati acquisiti.
+ES:
+myClient 1 ciao             STAMPA SULE SERVER:   ciao
+myClient 2 mondo            STAMPA SULE SERVER:   mondo
+myClient -1                 TERMINA IL SERVER
+

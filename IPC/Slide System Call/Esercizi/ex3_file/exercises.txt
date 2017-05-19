@@ -1,0 +1,71 @@
+***************************************************************************
+UTILIZZO DELLE SYSTEM CALL DI LINUX - GESTIONE DEL FILE-SYSTEM
+***************************************************************************
+
+(ex1)
+
+Utilizzando le system call di linux realizzare un programma che simuli il
+comportamento del comando "cat". La sintassi per la linea di comando dovra'
+essere la seguente:
+
+mycat.x <file1> ... <fileN>
+
+***************************************************************************
+
+(ex2)
+
+Utilizzando le system call di linux realizzare un programma che simuli il
+comportamento del comando "rm". La sintassi per la linea di comando dovra'
+essere la seguente:
+
+myrm.x <file1> ... <fileN>
+
+***************************************************************************
+
+(ex3)
+
+Utilizzando le system call di linux realizzare un programma che riscriva le
+righe di un file al contrario su stdout(la prima riga diventa l'ultima e via di
+seguito). La sintassi per la linea di comando dovra' essere la seguente:
+
+back_write.x <source>
+
+Quindi modificare il programma in modo che anche l'ordine dei caratteri
+all'interno di una riga sia invertito. Fare in modo inoltre che l'output venga
+scritto su un file e non su stdout usando la system call write. La sintassi per
+la linea di comando dovra' essere la seguente:
+
+back_write_to_file.x <source> <destination>
+
+***************************************************************************
+
+(ex4)
+
+Modificare il programma del punto 3 in modo che lo stdout venga rediretto in un
+file senza utilizzare ne' la system call write ne' la funzione di libreria del
+C fprintf(). E' consentito l'uso della sola funzione printf().  La sintassi per
+la linea di comando dovra' essere la seguente:
+
+back_write_to_file.x <source> <destination>
+
+***************************************************************************
+
+(ex5)
+
+Utilizzando le system call di linux realizzare un programma che scriva due
+stringhe su un file separate da uno spazio vuoto (spazio non e' inteso come
+carattere corrispondente alla pressione della barra spaziatrice, bensi' come
+parte del file che non contiene dati significativi).
+
+***************************************************************************
+
+(ex6)
+
+Utilizzando le system call di linux realizzare un programma che simuli il
+comportamento del comando ls -l su una directory.
+
+La sintassi per la linea di comando dovra' essere la seguente:
+
+myls.x <dir>
+
+***************************************************************************

@@ -1,0 +1,55 @@
+***************************************************************************
+UTILIZZO DELLE SYSTEM CALL DI LINUX - GESTIONE DEI PROCESSI
+***************************************************************************
+
+(ex1)
+
+Utilizzando la system call fork realizzare un programma che generi la seguente
+gerarchia di processi:
+
+                                padre
+                                /   \
+                               /     \
+                              /       \
+                           figlio_1   figlio_2
+                            /         /    \
+                           /         /      \
+                          /         /        \
+                     nipote_1    nipote_2   nipote_3
+
+Partendo dal padre e terminando con il nipote_3, ogni processo dovra' stampare
+il proprio pid, quello del padre e quello dei rispettivi figli.
+
+******************************************************************************
+
+(ex2)
+
+Utilizzando la system call exec realizzare una minishell che sia in grado di
+eseguire un comando passato come parametro alla shell. La linea di comando
+dovra' essere la seguente:
+
+myshell.x <comando> <arg_1> ... <arg_N>
+
+<arg_1> ... <arg_N> sono i parametri necessari alla esecuzione di <comando>
+
+******************************************************************************
+
+(ex3)
+
+Utilizzando le system call fork ed exec realizzare una shell che sia in grado
+di eseguire comandi in successione senza uscire dopo l'esecuzione del primo. La
+linea di comando dovra' essere la seguente:
+
+myshell.x
+
+Una volta lanciato, il programma dovra' stampare un prompt ed attendere che
+l'utente inserisca un comando. Quindi, il comando deve essere eseguito, la
+shell deve attendere l'esecuzione del comando e alla sua terminazione
+riproporre il prompt per un successivo comando.
+
+******************************************************************************
+
+(ex4)
+
+Modificare la shell dell'esercizio precedente in modo che possano essere
+lanciati programmi in background.

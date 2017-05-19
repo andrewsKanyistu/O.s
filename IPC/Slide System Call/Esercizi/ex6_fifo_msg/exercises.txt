@@ -1,0 +1,71 @@
+**************************************************************************
+UTILIZZO DELLE SYSTEM CALL DI LINUX - GESTIONE DELLE IPC
+***************************************************************************
+
+(ex1)
+
+Realizzare un'applicazione client-server che permetta ai client di inviare
+messaggi al server contenenti le seguenti informazioni:
+
+	nome
+	cognome
+	età
+	indirizzo di posta elettronica
+
+Il server deve ricevere il messaggio e stamparlo a video.
+Utilizzare le code di messaggi.
+Se il server non riceve messaggi per 30 secondi dovrà chiudere la coda
+e terminare.
+
+********************************************************************************
+
+(ex2)
+
+Modificare il programma client-server dell'esercizio (ex1)
+in modo che il server sia in attesa di messaggi di 2 tipi diversi
+da due client diversi.
+Per il messaggio utilizzare la stessa struttura dati dell'esercizio (ex1)
+contenuta in def.h.
+Si supponga che i messaggi inviati dal client_1 siano da parte di clienti
+mentre quelli inviati dal client_2 siano da parte di fornitori.
+Il server deve filtrare i dati dalla coda e salvare i dati su due file
+diversi a seconda della loro provenienza.
+Se il server non riceve messaggi di un determinato tipo per 30 secondi
+dovrà disabilitare la ricezione dei messaggi relativi a tale tipo.
+Il server termina solo quando entrambi i tipi di messaggi sono stati
+disabilitati.
+
+Suggerimento: il programma server deve creare un processo figlio. Il padre si
+occuperà della gestione dei messaggi dei fornitori, il figlio della
+gestione dei messaggi dei clienti.
+Ovviamente è necessario scrivere 2 programmi client (uno per i clienti e
+l'altro per i fornitori) sulla falsa riga del programma client dell'esercizio 1.
+
+
+********************************************************************************
+
+(ex3)
+
+Il programma mysort.c contenuto della directory ex3/ contiene 5 errori sintattici
+e 5 errori semantici. Correggerli e fare in modo che si comporti come
+mysort_corretto.x
+
+Il programma deve eseguire l'ordinamento alfabetico dei valori
+contenuti in un file fornito come argomento alla linea di comando.
+Il processo padre dovrà leggere i dati da file e
+scriverli su una pipe al processo figlio. Quest'ultimo deve eseguire il
+comando linux "sort" per ordinare i dati e ritornare i dati ordinati al
+padre usando un'altra pipe (diversa da quella usata precedentemente!).
+
+Per provare il programma mysort_corretto.x lanciare il comando:
+mysort_corretto.x dati.txt
+
+Il file dati.txt contiene dei dati non ordinati che vengono ordinati
+alfabeticamente da mysort_corretto.x
+
+
+********************************************************************************
+
+(ex4)
+
+Realizzare il programma del punto (3) usando fifo al posto di pipe.

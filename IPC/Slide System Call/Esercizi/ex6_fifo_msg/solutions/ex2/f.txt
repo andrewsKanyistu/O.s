@@ -1,0 +1,10 @@
+NUOVO FORNITORE
+mtype = 2
+first_name = oiio
+last_name = oio
+age = 333
+email = oiiooi
+
+
+ *** ***
+

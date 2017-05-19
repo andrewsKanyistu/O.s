@@ -1,0 +1,10 @@
+back_write.x
+dovrebbe invertire
+queste righe
+senza cambiare
+l'ordine dei
+caratteri!
+Invece back_write_to_file.x
+dovrebbe
+invertire anche
+l'ordine dei caratteri!

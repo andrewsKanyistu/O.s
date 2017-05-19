@@ -1,0 +1,40 @@
+(ex1)
+Completare il programma P_V.c implementando, tramite le system call System V
+per la gestione dei semafori, le due funzioni sem_signal e sem_wait
+che devono comportarsi come le tradizionali  funzioni P() e V()
+viste nel modulo di teoria.
+
+********************************************************************************
+
+(ex2)
+Realizzare un programma che sincronizzi tre processi A, B, C utilizzando
+i semafori. I processi condividono una risorsa e devono utilizzarla
+ciclicamente tre volte a testa nel seguente ordine:
+
+A --> B --> C --> A --> B --> C --> A --> B --> C
+
+Il processo A deve creare i semafori necessari, il processo C deve
+rimuovere i semafori al termine del loro utilizzo.
+
+********************************************************************************
+
+(ex3)
+Completare il programma prod_cons.c per realizzare un'applicazione
+produttore-consumatore che utilizzi la memoria condivisa.
+Il processo padre è il produttore e va completato,
+il figlio è il consumatore, ed e' gia' completamente specificato in
+prod_cons.c.
+Il padre deve produrre caratteri uno alla volta (da 'a' a 'r') e
+metterli in un buffer nella memoria condivisa, il figlio invece legge
+i caratteri dal buffer.
+Il buffer della memoria condivisa ha spazio per 8 caratteri.
+Il buffer deve essere usato come una coda circolare.
+Sincronizzare i processi utilizzando i semafori.
+
+********************************************************************************
+
+(ex4)
+Realizzare il programma (ex1) dell'esercitazione precedente (ex7_pipe_fifo_msg)
+utilizzando la memoria condivisa al posto delle code di messaggi.
+Sincronizzare i processi utilizzando i semafori. Utilizzare un buffer per la
+memoria condivisa con spazio per un solo record.

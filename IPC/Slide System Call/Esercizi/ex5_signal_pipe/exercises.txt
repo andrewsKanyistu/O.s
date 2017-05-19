@@ -1,0 +1,75 @@
+********************************************************************************
+UTILIZZO DELLE SYSTEM CALL DI LINUX - GESTIONE DEI SEGNALI
+********************************************************************************
+
+(ex1)
+
+Utilizzando le system call signal, kill, pause e sleep, realizzare un
+programma che crea due processi figli, il figlio 1 invia il segnale SIGUSR1
+al fratello passando per il padre. Il figlio 2 deve catturare il segnale
+inviatogli dal fratello e rispondere con il segnale SIGUSR2 sempre
+tramite il padre. Stampare a video delle stringhe per mostrare il corretto
+funzionamento del programma.
+
+Suggerimento:
+Il file sig_between_brothers.x contenuto nella cartella ex1 e' un esempio
+per vedere come dovrebbe funzionare il programma finale.
+
+Per risolvere l'esercizio, prendere spunto dal programma
+sig_to_brothers.c contenuto nella cartella ex1.
+Tale programma mostra come un processo puo' comunicare con un fratello
+usando i segnali e passando tramite il padre.
+
+
+********************************************************************************
+
+(ex2)
+
+Utilizzando le system call, realizzare un programma che emula la funzione
+di libreria del C "sleep".
+
+Usare come scheletro da cui partire il programma mysleep.c contenuto nella
+cartella ex2.
+Il programma mysleep_completa.x e' un esempio per vedere quale dovrebbe essere
+il risultato finale.
+
+
+********************************************************************************
+
+(ex3)
+
+Il programma pipe_father_to_child.c crea una pipe e un figlio.
+Il padre scrive nella pipe la frase "in bocca alla pipe". Il figlio
+legge la frase dalla pipe e la stampa a video.
+Modificare il programma in modo che il figlio utilizzi la exec per
+caricare un programma C scritto in un altro file (pread.c) che esegua la
+lettura della pipe e la scrittura su stdout di quanto letto.
+Creare anche il programma pread.c
+
+Suggerimento:
+Affinche' il programma pread.c possa leggere dalla pipe quando viene mandato
+in esecuzione dalla exec, e' necessario passare il descrittore della pipe
+a pread.c come parametro. Altrimenti pread.c non puo' sapere su quale pipe
+deve leggere!
+Gli argomenti passati come parametro a pread.c possono essere solo stringhe
+(ovvero gli elementi del vettore argv dichiarato come argomento del main),
+mentre il file descriptor e' un numero. Pertanto prima di passare il descrittore
+della pipe alla exec, e' necessario convertirlo da numero a stringa tramite la funzione
+sprintf (vedere man sprintf). Quindi quando ptread vorra' usare il descrittore
+per leggere dalla pipe dovra' converitirlo nuovamente da stringa a numero
+tramite la funziona atoi (vedere man atoi).
+
+********************************************************************************
+
+(ex4)
+
+Modificare la minishell creata la settimana scorsa (ex5_fork_exec/ex4)
+in modo che consenta l'esecuzione di pipe di comandi.
+La shell dovrà quindi essere in grado di eseguire linee di comando del tipo:
+<comando_1> | <comando_2>.
+
+Usare come scheletro per la soluzione il programma myshell.c contenuto nella
+cartella ex4. La parte da completare e' solamente quella relativa alla funzione
+execute. Il resto e' invariato rispetto a quanto si trova in ex5_fork_exec/ex4.
+
+

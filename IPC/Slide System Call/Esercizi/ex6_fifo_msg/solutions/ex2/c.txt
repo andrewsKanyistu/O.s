@@ -1,0 +1,10 @@
+NUOVO CLIENTE
+mtype = 1
+first_name = fld
+last_name = klfkd
+age = 3
+email = kfld
+
+
+ *** ***
+

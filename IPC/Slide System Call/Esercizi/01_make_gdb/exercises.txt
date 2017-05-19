@@ -1,0 +1,15 @@
+(ex0) Write two makefiles for the given project.
+      The first makefile must use implicit rules, while the second must use explicit rules.
+
+**************************************************
+
+(ex1) Find & correct all the errors of the given program.
+
+**************************************************
+
+(ex2) Find & correct all the errors of the given program.
+
+**************************************************
+
+(ex3) Find & correct all the errors of the given program.
+
