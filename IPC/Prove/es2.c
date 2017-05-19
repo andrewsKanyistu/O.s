@@ -32,7 +32,7 @@ int main (int argc, char *argv[]){
 	printf("%s\n",buffer );
 	token=strtok(buffer,";\n");		// tokenizzo la stringa con spazio e a capo
 	printf("token prima della tokenizzazione>>%s\n", token);
-	
+
 	int i =0, j=0;
 	int matriceA [dim][dim];
 
@@ -48,25 +48,27 @@ int main (int argc, char *argv[]){
 
 		token=strtok(NULL,";\n");
 	}
-	
+
 	if((chiave=ftok("es2.c",getpid()))==-1){
 		printf("Error nella creazione della chiave\n");
 	}
 
 
 
-	if((shmid=shmget(chiave,2 * sizeof(matriceA),IPC_CREAT|0666|IPC_EXCL))==-1){
-		printf("Failed memory failed\n");
+	if((shmid=shmget(chiave,3*sizeof(matriceA),IPC_CREAT|0666))==-1){
+		printf("Shared memory failed\n");
 	}
+	printf("%i\n",shmid );
 
 
-	int * attachPoint= shmat(shmid,0,0);
-	int * attach2= shmat(shmid,0,0);
-	if(attachPoint==(int *)-1){
+	char * attachPoint=(char *)  shmat(shmid,NULL,0);
+
+	if(attachPoint==(char *)-1){
 		printf("Errore nella shmat\n");
 	}
-	*attachPoint=1000;
-	attachPoint++;
-}
-	
+	sprintf(attachPoint,"100 blargon 101010 ahahaha ;");
+	printf("Scrittura eseguita nella memoria condivisa su %p\n",attachPoint );
+	printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
+	shmdt(attachPoint);
 
+}
