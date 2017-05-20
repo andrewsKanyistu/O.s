@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/sem.h>
 #ifndef SIZE
 #define SIZE 512
 #endif
@@ -62,11 +63,12 @@ int main (int argc, char *argv[]){
 
 
 	char * attachPoint=(char *)  shmat(shmid,NULL,0);
+	
 
 	if(attachPoint==(char *)-1){
 		printf("Errore nella shmat\n");
 	}
-	sprintf(attachPoint,"100 blargon 101010 ahahaha ;");
+	sprintf(attachPoint,"100 blargon 101010 posso tokenizzare;");
 	printf("Scrittura eseguita nella memoria condivisa su %p\n",attachPoint );
 	printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
 	shmdt(attachPoint);
