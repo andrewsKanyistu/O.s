@@ -8,11 +8,12 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include <sys/wait.h>
 #ifndef SIZE
 #define SIZE 512
 #endif
 
-
+void work();
 
 int main (int argc, char *argv[]){
 	int fd_out;
@@ -28,7 +29,7 @@ int main (int argc, char *argv[]){
 
 	// leggo tutto il blocco
 	if(!read(fd_out,buffer,4096))
-		printf("file non letto correttamente\n");
+	printf("file non letto correttamente\n");
 
 	printf("%s\n",buffer );
 	token=strtok(buffer,";\n");		// tokenizzo la stringa con spazio e a capo
@@ -63,7 +64,7 @@ int main (int argc, char *argv[]){
 
 
 	char * attachPoint=(char *)  shmat(shmid,NULL,0);
-	
+
 
 	if(attachPoint==(char *)-1){
 		printf("Errore nella shmat\n");
@@ -73,4 +74,26 @@ int main (int argc, char *argv[]){
 	printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
 	shmdt(attachPoint);
 
+	//pid_t children[5];
+	//int wpid;
+	int status;
+	pid_t pid;
+for ( i = 0; i < 5; i++) {
+	pid = fork();
+	if (pid==0) {
+		printf("sono il figio %i mio padre==>%i\n",getpid(),getppid() );
+		return 1;
+	}else{
+		wait(NULL);
+		printf("========PROCESSO GENITORE=======\n");
+	}
+}
+
+
+
+
+
+//while((wpid=wait(&status)) > 0){
+//	printf("padre terminato\n" );
+//}
 }
