@@ -74,20 +74,29 @@ int main (int argc, char *argv[]){
 	printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
 	shmdt(attachPoint);
 
-	//pid_t children[5];
+	pid_t children[5];
 	//int wpid;
-	int status;
-	pid_t pid;
+	//int status;
+	//pid_t pid;
+
+
+printf("Sono il padre col mio pid %i\n",getpid() );
+//sleep(30);
 for ( i = 0; i < 5; i++) {
-	pid = fork();
-	if (pid==0) {
-		printf("sono il figio %i mio padre==>%i\n",getpid(),getppid() );
-		return 1;
-	}else{
-		wait(NULL);
-		printf("========PROCESSO GENITORE=======\n");
-	}
+		children[i]=fork();
+		if(children[i]==0){
+			printf("sono il figlio ==> %i, mio padre ==> %i\n",getpid(),getppid() );
+			sleep(2);
+			exit(0);
+		}
+
+
+
 }
+//============ CODICE DEL PADRE==========
+sleep(5);
+printf("non so chi sta eseguendo questo codice==>%i\n",getpid() );
+
 
 
 
@@ -96,4 +105,5 @@ for ( i = 0; i < 5; i++) {
 //while((wpid=wait(&status)) > 0){
 //	printf("padre terminato\n" );
 //}
+return(0);
 }
