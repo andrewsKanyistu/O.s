@@ -62,18 +62,16 @@ int main (int argc, char *argv[]){
 	}
 	printf("%i\n",shmid );
 
-<<<<<<< HEAD
 
 	char * attachPoint=(char *)  shmat(shmid,NULL,0);
-=======
->>>>>>> master
 
-	char * attachPoint=(char *)  shmat(shmid,NULL,0);
+
+
 
 	if(attachPoint==(char *)-1){
 		printf("Errore nella shmat\n");
 	}
-<<<<<<< HEAD
+
 	sprintf(attachPoint,"100 blargon 101010 posso tokenizzare;");
 	printf("Scrittura eseguita nella memoria condivisa su %p\n",attachPoint );
 	printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
@@ -111,11 +109,11 @@ printf("non so chi sta eseguendo questo codice==>%i\n",getpid() );
 //	printf("padre terminato\n" );
 //}
 return(0);
-=======
+
 	sprintf(attachPoint,"100 blargon 101010 ahahaha ;");
 	printf("Scrittura eseguita nella memoria condivisa su %p\n",attachPoint );
 	printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
 	shmdt(attachPoint);
 
->>>>>>> master
+
 }
