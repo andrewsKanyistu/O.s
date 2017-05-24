@@ -89,7 +89,7 @@ for ( i = 0; i < 5; i++) {
 		children[i]=fork();
 		if(children[i]==0){
 			printf("sono il figlio ==> %i, mio padre ==> %i\n",getpid(),getppid() );
-			sleep(2);
+			//sleep(2);
 			exit(0);
 		}
 
@@ -108,12 +108,46 @@ printf("non so chi sta eseguendo questo codice==>%i\n",getpid() );
 //while((wpid=wait(&status)) > 0){
 //	printf("padre terminato\n" );
 //}
-return(0);
+// molitplicazione
+int matriceB[dim][dim];
+int somma[dim][dim];
+for ( i = 0; i < dim; i++) {
+	for ( j = 0; j < dim; j++) {
+		matriceB[i][j]=10;
+		somma[i][j]=5;
 
+	}
+
+}
+int multiply [dim][dim];
+for (size_t i = 0; i < dim; i++) {
+	for (size_t j = 0; j < dim; j++) {
+		multiply[i][j]=0;
+	}
+}
+int k,sum=0;
+for(i=0; i<dim; ++i){
+	for(j=0; j<dim; ++j)
+
+    	for(k=0; k<dim; ++k){
+        	multiply[i][j]+=matriceA[i][k]*matriceB[k][j];
+					//printf("mul==>%i\n",multiply[i][j] );
+    	}
+}
+
+
+	for ( i = 0; i < dim; i++) {
+		for ( j = 0; j < dim; j++) {
+			printf("%i ",multiply[i][j] );
+		}
+
+	}
+return(0);
+/*
 	sprintf(attachPoint,"100 blargon 101010 ahahaha ;");
 	printf("Scrittura eseguita nella memoria condivisa su %p\n",attachPoint );
 	printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
 	shmdt(attachPoint);
-
+*/
 
 }
