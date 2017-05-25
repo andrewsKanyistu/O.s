@@ -57,25 +57,25 @@ int main (int argc, char *argv[]){
 
 
 
-	if((shmid=shmget(chiave,3*sizeof(matriceA),IPC_CREAT|0666))==-1){
+	if((shmid=shmget(chiave,sizeof(matriceA),IPC_CREAT|0666))==-1){
 		printf("Shared memory failed\n");
 	}
 	printf("%i\n",shmid );
 
+	int (*attachPoint)[dim];
+	attachPoint=  shmat(shmid,0,0);
+	//int (*attachPoint)[dim]=(int *) shmat(shmid,0,0);
 
-	char * attachPoint=(char *)  shmat(shmid,NULL,0);
 
 
+	//if(attachPoint== (char *)-1){
+	//	printf("Errore nella shmat\n");
+	//}
 
-
-	if(attachPoint==(char *)-1){
-		printf("Errore nella shmat\n");
-	}
-
-	sprintf(attachPoint,"100 blargon 101010 posso tokenizzare;");
-	printf("Scrittura eseguita nella memoria condivisa su %p\n",attachPoint );
-	printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
-	shmdt(attachPoint);
+	//sprintf(attachPoint,"100 blargon 101010 posso tokenizzare;");
+	//printf("Scrittura eseguita nella memoria condivisa su %p\n",attachPoint );
+	//printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
+	//shmdt(attachPoint);
 
 	pid_t children[5];
 	//int wpid;
@@ -92,10 +92,8 @@ for ( i = 0; i < 5; i++) {
 			//sleep(2);
 			exit(0);
 		}
-
-
-
 }
+
 //============ CODICE DEL PADRE==========
 sleep(5);
 printf("non so chi sta eseguendo questo codice==>%i\n",getpid() );
@@ -108,7 +106,7 @@ printf("non so chi sta eseguendo questo codice==>%i\n",getpid() );
 //while((wpid=wait(&status)) > 0){
 //	printf("padre terminato\n" );
 //}
-// molitplicazione
+/* molitplicazione
 int matriceB[dim][dim];
 int somma[dim][dim];
 for ( i = 0; i < dim; i++) {
@@ -142,6 +140,7 @@ for(i=0; i<dim; ++i){
 		}
 
 	}
+	*/
 return(0);
 /*
 	sprintf(attachPoint,"100 blargon 101010 ahahaha ;");
