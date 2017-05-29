@@ -9,6 +9,7 @@
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/wait.h>
+#include <unistd.h>
 #ifndef SIZE
 #define SIZE 512
 #endif
@@ -81,9 +82,13 @@ int main (int argc, char *argv[]){
 	//int wpid;
 	//int status;
 	//pid_t pid;
+	attachPoint[1][1]=10;
 
 
 printf("Sono il padre col mio pid %i\n",getpid() );
+int pipeArr [2];
+char buff[15];
+pipe(pipeArr);
 //sleep(30);
 for ( i = 0; i < 5; i++) {
 		children[i]=fork();
@@ -92,14 +97,25 @@ for ( i = 0; i < 5; i++) {
 			//sleep(2);
 			exit(0);
 		}
+		if (i==2){
+			printf("sono il figlio %i e attachPoint vale %i\n",i,attachPoint[1][1] );
+			// modifico attachpoints
+			read(pipeArr[0],buff,15);
+			printf("questo è il messaggio======%s\n", buff);
+			attachPoint[1][1]=3;
+			return 1;
+		}
 }
 
 //============ CODICE DEL PADRE==========
+write(pipeArr[1],"Hello World",15);
 sleep(5);
-printf("non so chi sta eseguendo questo codice==>%i\n",getpid() );
+printf("attachPoint vale %i",attachPoint[1][1] );
 
 
 
+struct shmid_ds sharedmemory;
+shmctl(shmid,IPC_RMID,&sharedmemory);
 
 
 
