@@ -10,159 +10,138 @@
 #include <sys/sem.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <time.h>
+#include <sys/msg.h>
 #ifndef SIZE
-#define SIZE 512
+#define SIZE 4096   // dimensione in bytes da leggere da file
 #endif
 
-void work();
-
-int main (int argc, char *argv[]){
-	int fd_out;
-	char buffer[4096];			// buffer di 4096bytes
-	char *token;
-	const int dim=3;
-	key_t chiave;
-	int shmid;
-
-	if(!(fd_out=open(argv[1],O_RDONLY))){
-		printf("Errore on Open\n");
-	}
-
-	// leggo tutto il blocco
-	if(!read(fd_out,buffer,4096))
-	printf("file non letto correttamente\n");
-
-	printf("%s\n",buffer );
-	token=strtok(buffer,";\n");		// tokenizzo la stringa con spazio e a capo
-	printf("token prima della tokenizzazione>>%s\n", token);
-
-	int i =0, j=0;
-	int matriceA [dim][dim];
-
-	while(token != NULL){
-		matriceA[i][j]=atoi(token);
-		printf("i vale ==>%d, j vale ==>%i token vale ==>%s\n",i,j,token );
-		i++;
-		if (i==dim)
-		{
-			j++;
-			i=0;
-		}
-
-		token=strtok(NULL,";\n");
-	}
-
-	if((chiave=ftok("es2.c",getpid()))==-1){
-		printf("Error nella creazione della chiave\n");
-	}
+typedef struct {
+	char operazione;    		//messaggio da mandare ai figli
+	int riga;
+	int colonna;
+	int dimensione;
+	int *ptr_matriceA;
+	int *ptr_matriceB;
+	int *ptr_matriceC;
+}msg;
 
 
+int main(int argc, char *argv[]){
+int fd_matriceA;
+int fd_matriceB;
+int fd_matriceC;
+int i=0,j=0,k=0;											// variabili contatore
+char *token;
+char bufferA[SIZE];
+char bufferB[SIZE];
+char bufferC[SIZE];
+const int dim=atoi(argv[4]); 					// dimensione delle matrici
 
-	if((shmid=shmget(chiave,sizeof(matriceA),IPC_CREAT|0666))==-1){
-		printf("Shared memory failed\n");
-	}
-	printf("%i\n",shmid );
-
-	int (*attachPoint)[dim];
-	attachPoint=  shmat(shmid,0,0);
-	//int (*attachPoint)[dim]=(int *) shmat(shmid,0,0);
-
-
-
-	//if(attachPoint== (char *)-1){
-	//	printf("Errore nella shmat\n");
-	//}
-
-	//sprintf(attachPoint,"100 blargon 101010 posso tokenizzare;");
-	//printf("Scrittura eseguita nella memoria condivisa su %p\n",attachPoint );
-	//printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
-	//shmdt(attachPoint);
-
-	pid_t children[5];
-	//int wpid;
-	//int status;
-	//pid_t pid;
-	attachPoint[1][1]=10;
-
-
-printf("Sono il padre col mio pid %i\n",getpid() );
-int pipeArr [2];
-char buff[15];
-pipe(pipeArr);
-//sleep(30);
-for ( i = 0; i < 5; i++) {
-		children[i]=fork();
-		if(children[i]==0){
-			printf("sono il figlio ==> %i, mio padre ==> %i\n",getpid(),getppid() );
-			//sleep(2);
-			exit(0);
-		}
-		if (i==2){
-			printf("sono il figlio %i e attachPoint vale %i\n",i,attachPoint[1][1] );
-			// modifico attachpoints
-			read(pipeArr[0],buff,15);
-			printf("questo è il messaggio======%s\n", buff);
-			attachPoint[1][1]=3;
-			return 1;
-		}
-}
-
-//============ CODICE DEL PADRE==========
-write(pipeArr[1],"Hello World",15);
-sleep(5);
-printf("attachPoint vale %i",attachPoint[1][1] );
-
-
-
-struct shmid_ds sharedmemory;
-shmctl(shmid,IPC_RMID,&sharedmemory);
-
-
-
-//while((wpid=wait(&status)) > 0){
-//	printf("padre terminato\n" );
-//}
-/* molitplicazione
+//matrici dove verrano salvati i dati letti da disco
+int matriceA[dim][dim];
 int matriceB[dim][dim];
-int somma[dim][dim];
-for ( i = 0; i < dim; i++) {
+int matriceC[dim][dim];
+// inizializzazione
+for (i = 0; i < dim; i++) {
 	for ( j = 0; j < dim; j++) {
-		matriceB[i][j]=10;
-		somma[i][j]=5;
-
-	}
-
-}
-int multiply [dim][dim];
-for (size_t i = 0; i < dim; i++) {
-	for (size_t j = 0; j < dim; j++) {
-		multiply[i][j]=0;
+		matriceA[i][j]=0;
+		matriceB[i][j]=0;
+		matriceC[i][j]=0;
 	}
 }
-int k,sum=0;
-for(i=0; i<dim; ++i){
-	for(j=0; j<dim; ++j)
 
-    	for(k=0; k<dim; ++k){
-        	multiply[i][j]+=matriceA[i][k]*matriceB[k][j];
-					//printf("mul==>%i\n",multiply[i][j] );
-    	}
+
+// generazione della chiave
+key_t shm_key;
+if((shm_key=ftok(argv[0],getpid()))==-1){
+printf("Error nella creazione della chiave\n");
 }
 
 
-	for ( i = 0; i < dim; i++) {
-		for ( j = 0; j < dim; j++) {
-			printf("%i ",multiply[i][j] );
-		}
+//Verifico se i parametri inseriti sono corretti
+if(argc < 5){
+	printf(" Numero di argomenti insufficienti o non corretti\n" );
+	exit(1);
+}
 
+const int nProc=atoi(argv[5]);
+
+// apro i filese
+if(!(fd_matriceA=open(argv[1],O_RDONLY))){
+	printf("Errore on Open matrice A\n");
+}
+
+if(!(fd_matriceB=open(argv[2],O_RDONLY))){
+	printf("Errore on Open matrice A\n");
+}
+
+if(!(fd_matriceC=open(argv[3],O_RDONLY))){
+	printf("Errore on Open matrice A\n");
+}
+
+// leggo i file e li carico in buffer
+if(!read(fd_matriceA,bufferA,SIZE))
+	printf("file A  non letto correttamente\n");
+
+if(!read(fd_matriceB,bufferB,SIZE))
+	printf("file B non letto correttamente\n");
+
+
+// NB la matrice C non deve essere VUOTA
+if(!read(fd_matriceC,bufferC,SIZE)){
+	printf("file C  non letto correttamente\n");
+}
+
+//==========PARSE MATRICE A===================
+token=strtok(bufferA,";\n");		// tokenizzo la stringa con spazio e a capo
+ i =0, j=0;
+while(token != NULL){
+	matriceA[i][j]=atoi(token);
+	printf("i vale ==>%d, j vale ==>%i token vale ==>%s\n",i,j,token );
+	j++;
+	if (i==dim){
+		i++;
+		j=0;
 	}
-	*/
-return(0);
-/*
-	sprintf(attachPoint,"100 blargon 101010 ahahaha ;");
-	printf("Scrittura eseguita nella memoria condivisa su %p\n",attachPoint );
-	printf("Valore trovato nella attachPoinnt==>%s\n", attachPoint);
-	shmdt(attachPoint);
-*/
+	token=strtok(NULL,";\n");
+}
 
+
+//========== PARSE MATRICE B============
+i=0;j=0;
+token=strtok(bufferB,";\n");		// tokenizzo la stringa con spazio e a capo
+ i =0, j=0;
+while(token != NULL){
+	matriceB[i][j]=atoi(token);
+	printf("i vale ==>%d, j vale ==>%i token vale ==>%s\n",i,j,token );
+	j++;
+	if (i==dim){
+		i++;
+		j=0;
+	}
+	token=strtok(NULL,";\n");
+}
+
+
+
+
+// == sezione shared memory=====
+int shmid_A=0,shmid_B=0,shmid_C=0;
+if((shmid_A=shmget(shm_key,sizeof(matriceA),IPC_CREAT|0666))==-1)
+	printf("Shared memory failed\n");
+
+if((shmid_B=shmget(shm_key,sizeof(matriceA),IPC_CREAT|0666))==-1)
+	printf("Shared memory failed\n");
+
+if((shmid_C=shmget(shm_key,sizeof(matriceA),IPC_CREAT|0666))==-1)
+	printf("Shared memory failed\n");
+
+for (i = 0; i < dim; i++) {
+	for ( j = 0; j < dim; j++) {
+		printf("->%i",matriceB[i][j] );
+	}
+}
+
+return (0);
 }
