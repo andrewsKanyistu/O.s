@@ -36,6 +36,7 @@ char *token;
 char bufferA[SIZE];
 char bufferB[SIZE];
 char bufferC[SIZE];
+int shmid_A=0,shmid_B=0,shmid_C=0;		// id per modificare la memoria condivisa
 const int dim=atoi(argv[4]); 					// dimensione delle matrici
 
 //matrici dove verrano salvati i dati letti da disco
@@ -124,24 +125,23 @@ while(token != NULL){
 }
 
 
-
-
 // == sezione shared memory=====
-int shmid_A=0,shmid_B=0,shmid_C=0;
+
 if((shmid_A=shmget(shm_key,sizeof(matriceA),IPC_CREAT|0666))==-1)
+	printf("Shared memory failed on A\n");
+
+if((shmid_B=shmget(shm_key,sizeof(matriceB),IPC_CREAT|0666))==-1)
+	printf("Shared memory failed on B\n");
+
+if((shmid_C=shmget(shm_key,sizeof(matriceC),IPC_CREAT|0666))==-1)
 	printf("Shared memory failed\n");
 
-if((shmid_B=shmget(shm_key,sizeof(matriceA),IPC_CREAT|0666))==-1)
-	printf("Shared memory failed\n");
+int (*attach_A)[dim];
+attach_A=shmat(shmid_A,0,0);
+// copio le matrici A e B in memoria condivisa
 
-if((shmid_C=shmget(shm_key,sizeof(matriceA),IPC_CREAT|0666))==-1)
-	printf("Shared memory failed\n");
 
-for (i = 0; i < dim; i++) {
-	for ( j = 0; j < dim; j++) {
-		printf("->%i",matriceB[i][j] );
-	}
-}
+
 
 return (0);
 }
