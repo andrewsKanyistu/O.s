@@ -229,8 +229,7 @@ if(children>0){
 
 
 
-struct shmid_ds sharedmemory;
-shmctl(shmid,IPC_RMID,&sharedmemory);
+
 
 
 

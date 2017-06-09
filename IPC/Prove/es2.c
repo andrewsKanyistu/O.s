@@ -21,9 +21,9 @@ typedef struct {
 	int riga;
 	int colonna;
 	int dimensione;
-	int *ptr_matriceA;
-	int *ptr_matriceB;
-	int *ptr_matriceC;
+	//int *ptr_matriceA;
+	//int *ptr_matriceB;
+	//int *ptr_matriceC;
 }msg;
 
 
@@ -37,21 +37,12 @@ char bufferA[SIZE];
 char bufferB[SIZE];
 char bufferC[SIZE];
 int shmid_A=0,shmid_B=0,shmid_C=0;		// id per modificare la memoria condivisa
-const int dim=atoi(argv[4]); 					// dimensione delle matrici
+const int dim=atoi(argv[3]); 					// dimensione delle matrici
 
-//matrici dove verrano salvati i dati letti da disco
+//matrici dove verranno salvati i dati letti da disco
 int matriceA[dim][dim];
 int matriceB[dim][dim];
 int matriceC[dim][dim];
-// inizializzazione
-for (i = 0; i < dim; i++) {
-	for ( j = 0; j < dim; j++) {
-		matriceA[i][j]=0;
-		matriceB[i][j]=0;
-		matriceC[i][j]=0;
-	}
-}
-
 
 // generazione della chiave
 key_t shm_key;
@@ -66,9 +57,11 @@ if(argc < 5){
 	exit(1);
 }
 
-const int nProc=atoi(argv[5]);
+const int nProc=atoi(argv[4]);
 
-// apro i filese
+
+
+// apro i files
 if(!(fd_matriceA=open(argv[1],O_RDONLY))){
 	printf("Errore on Open matrice A\n");
 }
@@ -96,10 +89,9 @@ if(!read(fd_matriceC,bufferC,SIZE)){
 
 //==========PARSE MATRICE A===================
 token=strtok(bufferA,";\n");		// tokenizzo la stringa con spazio e a capo
- i =0, j=0;
+i =0, j=0;
 while(token != NULL){
 	matriceA[i][j]=atoi(token);
-	printf("i vale ==>%d, j vale ==>%i token vale ==>%s\n",i,j,token );
 	j++;
 	if (i==dim){
 		i++;
@@ -108,14 +100,12 @@ while(token != NULL){
 	token=strtok(NULL,";\n");
 }
 
-
 //========== PARSE MATRICE B============
-i=0;j=0;
+
 token=strtok(bufferB,";\n");		// tokenizzo la stringa con spazio e a capo
- i =0, j=0;
+i =0, j=0;
 while(token != NULL){
 	matriceB[i][j]=atoi(token);
-	printf("i vale ==>%d, j vale ==>%i token vale ==>%s\n",i,j,token );
 	j++;
 	if (i==dim){
 		i++;
@@ -137,11 +127,100 @@ if((shmid_C=shmget(shm_key,sizeof(matriceC),IPC_CREAT|0666))==-1)
 	printf("Shared memory failed\n");
 
 int (*attach_A)[dim];
+int (*attach_B)[dim];
 attach_A=shmat(shmid_A,0,0);
+attach_B=shmat(shmid_B,0,0);
+
 // copio le matrici A e B in memoria condivisa
+for ( i = 0; i < dim; i++) {
+	for(j=0;j<dim;j++){
+		attach_A[i][j]=matriceA[i][j];
+		attach_B[i][j]=matriceB[i][j];
+	}
+}
 
 
 
 
-return (0);
+pid_t children;
+int pipes[nProc-1][2];
+// read==>0 write===>1
+for(i=0;i<nProc;i++){
+	pipe(pipes[i]);
+	children=fork();
+	if (children==0){
+
+
+		msg rcv_from_parent;
+		while(1){
+			close(pipes[0][1]);
+			close(pipes[1][1]);
+			close(pipes[2][1]);
+
+			printf("sono %i==>%iAspetto messaggio dal padre\n",getpid(),i );
+			if(read(pipes[i][0],&rcv_from_parent,sizeof(rcv_from_parent))==-1)
+				printf("Errore nella read\n");
+			//printf("figlio numero %i, message %s\n",getpid(),stringbuff );
+			printf("sono oltre la read e per qualche motivo non mi sono bloccato\n" );
+			if(rcv_from_parent.operazione=='k'){
+				printf("figlio %i sta terminando\n",i );
+				printf("riga=%i, colonna =%i\n",rcv_from_parent.riga,rcv_from_parent.colonna );
+				exit(0);
+			}
+			//exit(0);
+
+		}
+	}
+}
+
+if(children >0){
+	int n=0,riga=0,colonna=0;
+
+	// PADRE
+	// inizializzo la stringa da mandare ai figli
+	msg msg_to_child;
+	msg_to_child.operazione='k';
+	msg_to_child.riga=100;
+	msg_to_child.colonna=100;
+	close(pipes[0][0]);
+	write(pipes[0][1],&msg_to_child,sizeof(msg));
+
+	msg_to_child.operazione='m';
+	msg_to_child.riga=200;
+	msg_to_child.colonna=200;
+	close(pipes[1][0]);
+	write(pipes[1][1],&msg_to_child,sizeof(msg));
+	close(pipes[1][1]);
+
+	msg_to_child.operazione='k';
+	msg_to_child.riga=300;
+	msg_to_child.colonna=300;
+	close(pipes[2][0]);
+	write(pipes[2][1],&msg_to_child,sizeof(msg));
+
+
+	wait(NULL);
+	wait(NULL);
+	wait(NULL);
+	}
+
+
+
+	//sleep(2);
+	//wait(NULL);
+
+
+
+
+
+
+// elimino la memoria condivisa;
+struct shmid_ds sharedmemory;
+shmctl(shmid_A,IPC_RMID,&sharedmemory);
+shmctl(shmid_B,IPC_RMID,&sharedmemory);
+shmctl(shmid_C,IPC_RMID,&sharedmemory);
+
+
+exit (0);
+
 }
