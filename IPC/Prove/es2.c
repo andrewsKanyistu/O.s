@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/msg.h>
+#define READ 0
+#define WRITE 1
 #ifndef SIZE
 #define SIZE 4096   // dimensione in bytes da leggere da file
 #endif
@@ -128,82 +130,132 @@ if((shmid_C=shmget(shm_key,sizeof(matriceC),IPC_CREAT|0666))==-1)
 
 int (*attach_A)[dim];
 int (*attach_B)[dim];
-attach_A=shmat(shmid_A,0,0);
-attach_B=shmat(shmid_B,0,0);
+attach_A=shmat(shmid_A,NULL,0);
+attach_B=shmat(shmid_B,NULL,0);
 
 // copio le matrici A e B in memoria condivisa
 for ( i = 0; i < dim; i++) {
 	for(j=0;j<dim;j++){
+
 		attach_A[i][j]=matriceA[i][j];
 		attach_B[i][j]=matriceB[i][j];
+
+		//printf("%i\n", attach_A[i][j]);
 	}
 }
+
+for ( i = 0; i < dim; i++)
+	for(j=0;j <dim; j++)
+		printf("%i\n",attach_A[i][j] );
+
+
+
 
 
 
 
 pid_t children;
 int pipes[nProc-1][2];
+printf("Numero processi==>%i\n",nProc);
 // read==>0 write===>1
-for(i=0;i<nProc;i++){
+
+for (i=0;i<nProc;i++){
 	pipe(pipes[i]);
 	children=fork();
-	if (children==0){
+	if(children==0){
+		// codice del figlio
+		msg msg_parent;
+		close(pipes[i][1]);
+		///while (1) {
+			printf("figlio %i\n",i );
+			// chiudo la pipe in scrittura
+			int status;
+			while(1){
+				if ((status =read(pipes[i][READ],&msg_parent,sizeof(msg))==-1)) {
+					perror("read failed on pipe");
+				};
 
+				switch (msg_parent.operazione) {
+					case 'k':{
+						printf("Operazione ==>%c figlio %i\n", msg_parent.operazione,i);
+						printf("figlio %i terminato\n",i );
+						exit(0);
+						break;
+					}
+					case 'm':{
+						int cRiga=msg_parent.riga;
+						int cCol=msg_parent.colonna;
 
-		msg rcv_from_parent;
-		while(1){
-			close(pipes[0][1]);
-			close(pipes[1][1]);
-			close(pipes[2][1]);
-
-			printf("sono %i==>%iAspetto messaggio dal padre\n",getpid(),i );
-			if(read(pipes[i][0],&rcv_from_parent,sizeof(rcv_from_parent))==-1)
-				printf("Errore nella read\n");
-			//printf("figlio numero %i, message %s\n",getpid(),stringbuff );
-			printf("sono oltre la read e per qualche motivo non mi sono bloccato\n" );
-			if(rcv_from_parent.operazione=='k'){
-				printf("figlio %i sta terminando\n",i );
-				printf("riga=%i, colonna =%i\n",rcv_from_parent.riga,rcv_from_parent.colonna );
-				exit(0);
-			}
-			//exit(0);
+						printf("Operazione ==>%c figlio %i\n", msg_parent.operazione,i);
+						printf("riga==> %i, colonna ==> %i, \n",msg_parent.riga,msg_parent.colonna);
+						break;
+					}
+				}
 
 		}
 	}
+
 }
 
 if(children >0){
 	int n=0,riga=0,colonna=0;
 
-	// PADRE
-	// inizializzo la stringa da mandare ai figli
-	msg msg_to_child;
+msg msg_to_child;
+for(i=0;i<dim;i++)
+	printf("attach_A==> %i\n",attach_B[i][i] );
+
+
+// chiudo i pipes alla in lettura
+for ( i = 0; i < nProc-1; i++) {
+	close(pipes[i][READ]);
+}
+// MOLTIPLICAZIONE
+
+printf("==================MOLTIPLICAZIONE================\n");
+for (i=0;i<nProc;i++){
+
+	for ( j = 0,n=0; j < nProc; j++,n++) {
+		if(n==nProc-1){
+			n=0;
+		}
+		msg_to_child.operazione='m';
+		msg_to_child.riga=i;
+		msg_to_child.colonna=j;
+		printf("riga%i colonna%i\n",i,j );
+		write(pipes[n][WRITE],&msg_to_child,sizeof(msg_to_child));
+
+	}
+
+}
+printf("==================MOLTIPLICAZIONE================\n");
+
+/*model
 	msg_to_child.operazione='k';
-	msg_to_child.riga=100;
-	msg_to_child.colonna=100;
+	msg_to_child.riga=200;
+	msg_to_child.colonna=200;
 	close(pipes[0][0]);
 	write(pipes[0][1],&msg_to_child,sizeof(msg));
 
-	msg_to_child.operazione='m';
-	msg_to_child.riga=200;
-	msg_to_child.colonna=200;
-	close(pipes[1][0]);
-	write(pipes[1][1],&msg_to_child,sizeof(msg));
-	close(pipes[1][1]);
 
-	msg_to_child.operazione='k';
+	msg_to_child.operazione='m';
 	msg_to_child.riga=300;
 	msg_to_child.colonna=300;
 	close(pipes[2][0]);
 	write(pipes[2][1],&msg_to_child,sizeof(msg));
 
+	msg_to_child.operazione='m';
+	msg_to_child.riga=20;
+	msg_to_child.colonna=30;
+	close(pipes[2][0]);
+	write(pipes[2][1],&msg_to_child,sizeof(msg));
+*/
 
-	wait(NULL);
-	wait(NULL);
-	wait(NULL);
+
+
 	}
-
+for ( i = 0; i < nProc-1; i++) {
+	wait(NULL); // aspetto la terminazione dei figli
+}
 
 
 	//sleep(2);
@@ -221,6 +273,5 @@ shmctl(shmid_B,IPC_RMID,&sharedmemory);
 shmctl(shmid_C,IPC_RMID,&sharedmemory);
 
 
-exit (0);
 
 }
