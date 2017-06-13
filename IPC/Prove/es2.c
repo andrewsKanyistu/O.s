@@ -195,7 +195,7 @@ for (i=0;i<nProc;i++){
 							//num=attach_C[cRiga][cCol];
 
 						}
-					
+
 						break;
 					}
 				}
@@ -222,7 +222,7 @@ for ( i = 0; i < nProc-1; i++) {
 //printf("==================MOLTIPLICAZIONE================\n");
 for (i=0;i<dim;i++){
 
-	for ( j = 0,n=0; j < dim; j++,n++) {
+	for ( j = 0,n=0; j < dim; j++) {
 		msg_to_child.operazione='m';
 		msg_to_child.riga=i;
 		msg_to_child.colonna=j;
@@ -230,7 +230,10 @@ for (i=0;i<dim;i++){
 		write(pipes[n][WRITE],&msg_to_child,sizeof(msg_to_child));
 		if(n==nProc-1){
 			n=0;
+		}else{
+			n++;
 		}
+
 
 	}
 
