@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -46,12 +46,17 @@ int matriceA[dim][dim];
 int matriceB[dim][dim];
 int matriceC[dim][dim];
 
-// generazione della chiave
-key_t shm_key;
-if((shm_key=ftok(argv[0],getpid()))==-1){
-printf("Error nella creazione della chiave\n");
+// generazione della chiave per la memoria condivisa A;B;C
+key_t shm_key,shm_keyB,shm_keyC;
+if((shm_key=ftok(argv[0],'a'))==-1){
+	perror("Error nella creazione della chiave\n");
 }
-
+if((shm_keyB=ftok(argv[0],'b'))==-1){
+	perror("Error nella creazione della chiave\n");
+}
+if((shm_keyC=ftok(argv[0],'c'))==-1){
+	perror("Error nella creazione della chiave matrice c\n");
+}
 
 //Verifico se i parametri inseriti sono corretti
 if(argc < 5){
@@ -122,16 +127,18 @@ while(token != NULL){
 if((shmid_A=shmget(shm_key,sizeof(matriceA),IPC_CREAT|0666))==-1)
 	printf("Shared memory failed on A\n");
 
-if((shmid_B=shmget(shm_key,sizeof(matriceB),IPC_CREAT|0666))==-1)
+if((shmid_B=shmget(shm_keyB,sizeof(matriceB),IPC_CREAT|0666))==-1)
 	printf("Shared memory failed on B\n");
 
-if((shmid_C=shmget(shm_key,sizeof(matriceC),IPC_CREAT|0666))==-1)
+if((shmid_C=shmget(shm_keyC,sizeof(matriceC),IPC_CREAT|0666))==-1)
 	printf("Shared memory failed\n");
 
 int (*attach_A)[dim];
 int (*attach_B)[dim];
-attach_A=shmat(shmid_A,NULL,0);
+int (*attach_C)[dim];
+attach_A= shmat(shmid_A,NULL,0);
 attach_B=shmat(shmid_B,NULL,0);
+attach_C=shmat(shmid_C,NULL,0);
 
 // copio le matrici A e B in memoria condivisa
 for ( i = 0; i < dim; i++) {
@@ -139,18 +146,10 @@ for ( i = 0; i < dim; i++) {
 
 		attach_A[i][j]=matriceA[i][j];
 		attach_B[i][j]=matriceB[i][j];
-
+		attach_C[i][j]=0;
 		//printf("%i\n", attach_A[i][j]);
 	}
 }
-
-for ( i = 0; i < dim; i++)
-	for(j=0;j <dim; j++)
-		printf("%i\n",attach_A[i][j] );
-
-
-
-
 
 
 
@@ -165,9 +164,9 @@ for (i=0;i<nProc;i++){
 	if(children==0){
 		// codice del figlio
 		msg msg_parent;
-		close(pipes[i][1]);
-		///while (1) {
-			printf("figlio %i\n",i );
+		close(pipes[i][WRITE]);
+
+			//printf("figlio %i\n",i );
 			// chiudo la pipe in scrittura
 			int status;
 			while(1){
@@ -188,6 +187,15 @@ for (i=0;i<nProc;i++){
 
 						printf("Operazione ==>%c figlio %i\n", msg_parent.operazione,i);
 						printf("riga==> %i, colonna ==> %i, \n",msg_parent.riga,msg_parent.colonna);
+						int matRiga[dim];
+						int num=0;
+
+						for(j=0;j<dim;j++){
+							attach_C[cRiga][cCol]+=attach_A[cRiga][j]*attach_B[j][cCol];
+							//num=attach_C[cRiga][cCol];
+
+						}
+					
 						break;
 					}
 				}
@@ -201,8 +209,8 @@ if(children >0){
 	int n=0,riga=0,colonna=0;
 
 msg msg_to_child;
-for(i=0;i<dim;i++)
-	printf("attach_A==> %i\n",attach_B[i][i] );
+//for(i=0;i<dim;i++)
+	//printf("attach_A==> %i\n",attach_B[i][i] );
 
 
 // chiudo i pipes alla in lettura
@@ -211,51 +219,39 @@ for ( i = 0; i < nProc-1; i++) {
 }
 // MOLTIPLICAZIONE
 
-printf("==================MOLTIPLICAZIONE================\n");
-for (i=0;i<nProc;i++){
+//printf("==================MOLTIPLICAZIONE================\n");
+for (i=0;i<dim;i++){
 
-	for ( j = 0,n=0; j < nProc; j++,n++) {
-		if(n==nProc-1){
-			n=0;
-		}
+	for ( j = 0,n=0; j < dim; j++,n++) {
 		msg_to_child.operazione='m';
 		msg_to_child.riga=i;
 		msg_to_child.colonna=j;
-		printf("riga%i colonna%i\n",i,j );
+		//printf("riga%i colonna%i\n",i,j );
 		write(pipes[n][WRITE],&msg_to_child,sizeof(msg_to_child));
+		if(n==nProc-1){
+			n=0;
+		}
 
 	}
 
 }
-printf("==================MOLTIPLICAZIONE================\n");
+//printf("==================MOLTIPLICAZIONE================\n");
+sleep(5);
+	for ( i = 0; i < dim; i++) {
+		for(k=0;k<dim;k++){
+			printf("matrice C ==>%i\n",attach_C[i][k] );
 
-/*model
-	msg_to_child.operazione='k';
-	msg_to_child.riga=200;
-	msg_to_child.colonna=200;
-	close(pipes[0][0]);
-	write(pipes[0][1],&msg_to_child,sizeof(msg));
-
-
-	msg_to_child.operazione='m';
-	msg_to_child.riga=300;
-	msg_to_child.colonna=300;
-	close(pipes[2][0]);
-	write(pipes[2][1],&msg_to_child,sizeof(msg));
-
-	msg_to_child.operazione='m';
-	msg_to_child.riga=20;
-	msg_to_child.colonna=30;
-	close(pipes[2][0]);
-	write(pipes[2][1],&msg_to_child,sizeof(msg));
-*/
-
-
-
+		}
 	}
-for ( i = 0; i < nProc-1; i++) {
-	wait(NULL); // aspetto la terminazione dei figli
+
+
+	for ( i = 0; i < nProc-1; i++) {
+		wait(NULL); // aspetto la terminazione dei figli
+	}
+
 }
+
+
 
 
 	//sleep(2);
@@ -264,7 +260,7 @@ for ( i = 0; i < nProc-1; i++) {
 
 
 
-
+printf("Arrivo fin qui??\n");
 
 // elimino la memoria condivisa;
 struct shmid_ds sharedmemory;
