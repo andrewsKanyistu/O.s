@@ -180,7 +180,7 @@ for ( i = 0; i < dim; i++) {
 }
 
 srand(time(NULL));
- *shm_sumValue=100;
+ *shm_sumValue=0;
  int temp=*shm_sumValue;
  temp++;
  *shm_sumValue=temp;
@@ -196,6 +196,7 @@ for (i=0;i<nProc;i++){
 	if(children==0){
 		// codice del figlio
 		msg msg_parent;
+		int cRiga=0,cCol=0;
 		close(pipes[i][WRITE]);
 
 			//printf("figlio %i\n",i );
@@ -215,8 +216,8 @@ for (i=0;i<nProc;i++){
 						break;
 					}
 					case 'm':{
-						int cRiga=msg_parent.riga;
-						int cCol=msg_parent.colonna;
+						cRiga=msg_parent.riga;
+						cCol=msg_parent.colonna;
 
 						//printf("Operazione ==>%c figlio %i\n", msg_parent.operazione,i);
 						//printf("riga==> %i, colonna ==> %i, \n",msg_parent.riga,msg_parent.colonna);
@@ -240,6 +241,18 @@ for (i=0;i<nProc;i++){
 
 						break;
 					}
+					case 's':{
+						cRiga=msg_parent.riga;
+						cCol=msg_parent.colonna;
+						*shm_sumValue+=attach_A[cRiga][cCol]+attach_B[cRiga][cCol];
+						printf("ricevuto somma da padre\n" );
+						printf("figio %i dice>>>Valore di somma==>%i",i,*shm_sumValue );
+						break;
+					}
+					default:{
+						printf("Messaggio dal padre non riconoscuito, ora esco\n");
+						break;
+					}
 				}
 
 		}
@@ -247,21 +260,16 @@ for (i=0;i<nProc;i++){
 
 }
 
+// CODICE DEL PADRE
 if(children >0){
 	int n=0;
-	//int riga=0,colonna=0;
+
 
 msg msg_to_child;
-//msg_queue fromChild;
-//for(i=0;i<dim;i++)
-	//printf("attach_A==> %i\n",attach_B[i][i] );
 
 
-// chiudo i pipes alla in lettura
-/*
-for ( i = 0; i < nProc-1; i++) {
 
-}*/
+
 // MOLTIPLICAZIONE
 
 for (i=0;i<dim;i++){
@@ -284,7 +292,44 @@ for (i=0;i<dim;i++){
 	}
 }
 
-//================== somma=====================
+// SOMMA
+for (i=0;i<dim;i++){
+	close(pipes[i][READ]);
+	for ( j = 0,n=0; j < dim; j++) {
+		msg_to_child.operazione='s';
+		msg_to_child.riga=i;
+		msg_to_child.colonna=j;
+
+		write(pipes[n][WRITE],&msg_to_child,sizeof(msg_to_child));
+		if(n==nProc-1){
+			n=0;
+		}
+		n++;
+		/*
+		if(msgrcv(queue,&toParent,sizeof(toParent),0,0)==-1){
+			perror("Error message queue");
+			exit(1);
+		}
+		printf("PADRE DICE:%s\n",toParent.text );
+	}
+	*/
+}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 //sleep(5);
@@ -317,7 +362,7 @@ shmctl(shmid_sum,IPC_RMID,&sharedmemory);
 
 
 
-printf("	==========%i=============\n",*shm_sumValue );
+//printf("	==========%i=============\n",*shm_sumValue );
 
 
 // elimino la memoria condivisa;
