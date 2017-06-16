@@ -27,7 +27,10 @@ typedef struct {
 	//int *ptr_matriceB;
 	//int *ptr_matriceC;
 }msg;
-
+typedef struct {
+	long mtype;
+	char text[SIZE];
+}msg_queue;
 
 int main(int argc, char *argv[]){
 int fd_matriceA;
@@ -35,10 +38,12 @@ int fd_matriceB;
 int fd_matriceC;
 int i=0,j=0,k=0;											// variabili contatore
 char *token;
+struct shmid_ds sharedmemory;
+msg_queue toParent;
 char bufferA[SIZE];
 char bufferB[SIZE];
 char bufferC[SIZE];
-int shmid_A=0,shmid_B=0,shmid_C=0;		// id per modificare la memoria condivisa
+int shmid_A=0,shmid_B=0,shmid_C=0,shmid_sum;		// id per modificare la memoria condivisa
 const int dim=atoi(argv[3]); 					// dimensione delle matrici
 
 //matrici dove verranno salvati i dati letti da disco
@@ -46,8 +51,8 @@ int matriceA[dim][dim];
 int matriceB[dim][dim];
 int matriceC[dim][dim];
 
-// generazione della chiave per la memoria condivisa A;B;C
-key_t shm_key,shm_keyB,shm_keyC;
+// generazione della chiave per la memoria condivisa A;B;C e per la somma
+key_t shm_key,shm_keyB,shm_keyC,shm_sum;
 if((shm_key=ftok(argv[0],'a'))==-1){
 	perror("Error nella creazione della chiave\n");
 }
@@ -57,6 +62,10 @@ if((shm_keyB=ftok(argv[0],'b'))==-1){
 if((shm_keyC=ftok(argv[0],'c'))==-1){
 	perror("Error nella creazione della chiave matrice c\n");
 }
+if((shm_sum=ftok(argv[0],'k'))==-1){
+	perror("Error nella creazione della chiave somma c\n");
+}
+
 
 //Verifico se i parametri inseriti sono corretti
 if(argc < 5){
@@ -131,14 +140,22 @@ if((shmid_B=shmget(shm_keyB,sizeof(matriceB),IPC_CREAT|0666))==-1)
 	printf("Shared memory failed on B\n");
 
 if((shmid_C=shmget(shm_keyC,sizeof(matriceC),IPC_CREAT|0666))==-1)
-	printf("Shared memory failed\n");
+	printf("Shared memory failed on C\n");
+
+if((shmid_sum=shmget(shm_sum,sizeof(int)*56,IPC_CREAT|IPC_EXCL|0600))==-1)
+	printf("Shared memory failed on sum\n");
 
 int (*attach_A)[dim];
 int (*attach_B)[dim];
 int (*attach_C)[dim];
+int *shm_sumValue;
 attach_A= shmat(shmid_A,NULL,0);
 attach_B=shmat(shmid_B,NULL,0);
 attach_C=shmat(shmid_C,NULL,0);
+shm_sumValue= (int *)shmat(shmid_sum,NULL,0);
+int queue;
+if((queue=msgget(IPC_PRIVATE,(IPC_CREAT|IPC_EXCL|0660))==-1))
+	printf("Failed Creation message queue\n" );
 
 // copio le matrici A e B in memoria condivisa
 for ( i = 0; i < dim; i++) {
@@ -151,7 +168,7 @@ for ( i = 0; i < dim; i++) {
 	}
 }
 
-
+srand(time(NULL));
 
 pid_t children;
 int pipes[nProc-1][2];
@@ -169,6 +186,7 @@ for (i=0;i<nProc;i++){
 			//printf("figlio %i\n",i );
 			// chiudo la pipe in scrittura
 			int status;
+
 			while(1){
 				if ((status =read(pipes[i][READ],&msg_parent,sizeof(msg))==-1)) {
 					perror("read failed on pipe");
@@ -176,7 +194,7 @@ for (i=0;i<nProc;i++){
 
 				switch (msg_parent.operazione) {
 					case 'k':{
-						printf("Operazione ==>%c figlio %i\n", msg_parent.operazione,i);
+						//printf("asfdifhbud ==>%c figlio %i\n", msg_parent.operazione,i);
 						printf("figlio %i terminato\n",i );
 						exit(0);
 						break;
@@ -185,15 +203,23 @@ for (i=0;i<nProc;i++){
 						int cRiga=msg_parent.riga;
 						int cCol=msg_parent.colonna;
 
-						printf("Operazione ==>%c figlio %i\n", msg_parent.operazione,i);
-						printf("riga==> %i, colonna ==> %i, \n",msg_parent.riga,msg_parent.colonna);
-						int matRiga[dim];
+						//printf("Operazione ==>%c figlio %i\n", msg_parent.operazione,i);
+						//printf("riga==> %i, colonna ==> %i, \n",msg_parent.riga,msg_parent.colonna);
+						//int matRiga[dim];
 						int num=0;
 
 						for(j=0;j<dim;j++){
 							attach_C[cRiga][cCol]+=attach_A[cRiga][j]*attach_B[j][cCol];
-							//num=attach_C[cRiga][cCol];
+							num=attach_C[cRiga][cCol];
 
+						}
+						// dire al padre che ho finito
+						//printf("nel figlio%i num ==>%i\n",i,attach_C[cRiga][cCol] );
+						toParent.mtype=1;
+						sprintf(toParent.text,"Figlio numero %i finito MOLTIPLICAZIONE con risultato%i",i,num);
+						sleep(rand()%3);
+						if(msgsnd(queue,&toParent,sizeof(toParent)-sizeof(long),0)==-1){
+								perror("errore sul invio a padre");
 						}
 
 						break;
@@ -206,50 +232,57 @@ for (i=0;i<nProc;i++){
 }
 
 if(children >0){
-	int n=0,riga=0,colonna=0;
+	int n=0;
+	//int riga=0,colonna=0;
 
 msg msg_to_child;
+//msg_queue fromChild;
 //for(i=0;i<dim;i++)
 	//printf("attach_A==> %i\n",attach_B[i][i] );
 
 
 // chiudo i pipes alla in lettura
+/*
 for ( i = 0; i < nProc-1; i++) {
-	close(pipes[i][READ]);
-}
+
+}*/
 // MOLTIPLICAZIONE
 
-//printf("==================MOLTIPLICAZIONE================\n");
 for (i=0;i<dim;i++){
-
+	close(pipes[i][READ]);
 	for ( j = 0,n=0; j < dim; j++) {
 		msg_to_child.operazione='m';
 		msg_to_child.riga=i;
 		msg_to_child.colonna=j;
-		//printf("riga%i colonna%i\n",i,j );
+
 		write(pipes[n][WRITE],&msg_to_child,sizeof(msg_to_child));
 		if(n==nProc-1){
 			n=0;
 		}else{
 			n++;
 		}
-
+		if(msgrcv(queue,&toParent,sizeof(toParent),0,0)==-1){
+			perror("Error message queue");
+			exit(1);
+		}
+		printf("PADRE DICE:%s\n",toParent.text );
 
 	}
 
 }
-//printf("==================MOLTIPLICAZIONE================\n");
-sleep(5);
+
+//sleep(5);
+
+shmctl(shmid_sum,IPC_RMID,&sharedmemory);
+
+	for ( i = 0; i < nProc-1; i++) {
+		wait(NULL); // aspetto la terminazione dei figli
+	}
 	for ( i = 0; i < dim; i++) {
 		for(k=0;k<dim;k++){
 			printf("matrice C ==>%i\n",attach_C[i][k] );
 
 		}
-	}
-
-
-	for ( i = 0; i < nProc-1; i++) {
-		wait(NULL); // aspetto la terminazione dei figli
 	}
 
 }
@@ -263,14 +296,15 @@ sleep(5);
 
 
 
-printf("Arrivo fin qui??\n");
+
 
 // elimino la memoria condivisa;
-struct shmid_ds sharedmemory;
+
 shmctl(shmid_A,IPC_RMID,&sharedmemory);
 shmctl(shmid_B,IPC_RMID,&sharedmemory);
 shmctl(shmid_C,IPC_RMID,&sharedmemory);
 
+shmdt(NULL);
 
-
+printf("ho finito \n" );
 }
