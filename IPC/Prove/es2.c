@@ -142,7 +142,7 @@ if((shmid_B=shmget(shm_keyB,sizeof(matriceB),IPC_CREAT|0666))==-1)
 if((shmid_C=shmget(shm_keyC,sizeof(matriceC),IPC_CREAT|0666))==-1)
 	printf("Shared memory failed on C\n");
 
-if((shmid_sum=shmget(shm_sum,sizeof(int)*56,IPC_CREAT|IPC_EXCL|0600))==-1)
+if((shmid_sum=shmget(shm_sum,sizeof(int),IPC_CREAT|0666))==-1)
 	printf("Shared memory failed on sum\n");
 
 int (*attach_A)[dim];
@@ -154,9 +154,10 @@ attach_B=shmat(shmid_B,NULL,0);
 attach_C=shmat(shmid_C,NULL,0);
 shm_sumValue= (int *)shmat(shmid_sum,NULL,0);
 int queue;
-if((queue=msgget(IPC_PRIVATE,(IPC_CREAT|IPC_EXCL|0660))==-1))
+if((queue=msgget(IPC_PRIVATE,(IPC_CREAT|0660))==-1))
 	printf("Failed Creation message queue\n" );
 
+printf("dimensione matrici %i\n",dim );
 // copio le matrici A e B in memoria condivisa
 for ( i = 0; i < dim; i++) {
 	for(j=0;j<dim;j++){
@@ -167,12 +168,26 @@ for ( i = 0; i < dim; i++) {
 		//printf("%i\n", attach_A[i][j]);
 	}
 }
+// stampo le matrici a video
+for ( i = 0; i < dim; i++) {
+	for(j=0;j<dim;j++){
+		if(j==dim-1){
+			printf("\n" );
+		}
+		printf("%i\t", matriceA[i][j]);
+
+	}
+}
 
 srand(time(NULL));
+ *shm_sumValue=100;
+ int temp=*shm_sumValue;
+ temp++;
+ *shm_sumValue=temp;
 
 pid_t children;
 int pipes[nProc-1][2];
-printf("Numero processi==>%i\n",nProc);
+printf("\nNumero processi==>%i\n",nProc);
 // read==>0 write===>1
 
 for (i=0;i<nProc;i++){
@@ -213,6 +228,7 @@ for (i=0;i<nProc;i++){
 							num=attach_C[cRiga][cCol];
 
 						}
+
 						// dire al padre che ho finito
 						//printf("nel figlio%i num ==>%i\n",i,attach_C[cRiga][cCol] );
 						toParent.mtype=1;
@@ -258,26 +274,26 @@ for (i=0;i<dim;i++){
 		write(pipes[n][WRITE],&msg_to_child,sizeof(msg_to_child));
 		if(n==nProc-1){
 			n=0;
-		}else{
-			n++;
 		}
+		n++;
 		if(msgrcv(queue,&toParent,sizeof(toParent),0,0)==-1){
 			perror("Error message queue");
 			exit(1);
 		}
 		printf("PADRE DICE:%s\n",toParent.text );
-
 	}
-
 }
+
+//================== somma=====================
+
 
 //sleep(5);
 
 shmctl(shmid_sum,IPC_RMID,&sharedmemory);
 
-	for ( i = 0; i < nProc-1; i++) {
-		wait(NULL); // aspetto la terminazione dei figli
-	}
+	//for ( i = 0; i < nProc-1; i++) {
+	//	wait(NULL); // aspetto la terminazione dei figli
+	//}
 	for ( i = 0; i < dim; i++) {
 		for(k=0;k<dim;k++){
 			printf("matrice C ==>%i\n",attach_C[i][k] );
@@ -285,7 +301,13 @@ shmctl(shmid_sum,IPC_RMID,&sharedmemory);
 		}
 	}
 
+	for ( i = 0,n=0; i < nProc; i++) {
+			msg_to_child.operazione='k';
+			write(pipes[i][WRITE],&msg_to_child,sizeof(msg_to_child));
+	}
 }
+
+
 
 
 
@@ -295,7 +317,7 @@ shmctl(shmid_sum,IPC_RMID,&sharedmemory);
 
 
 
-
+printf("	==========%i=============\n",*shm_sumValue );
 
 
 // elimino la memoria condivisa;
