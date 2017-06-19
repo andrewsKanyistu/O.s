@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/msg.h>
+#define PADRE 0		// identificativo del padre nel vettore di semafori
+#define FIGLIO 1	// identificativo del un qualunque figlio nel vettore di semafori
 #define READ 0
 #define WRITE 1
 #ifndef SIZE
@@ -23,9 +25,6 @@ typedef struct {
 	int riga;
 	int colonna;
 	int dimensione;
-	//int *ptr_matriceA;
-	//int *ptr_matriceB;
-	//int *ptr_matriceC;
 }msg;
 typedef struct {
 	long mtype;
@@ -65,6 +64,39 @@ if((shm_keyC=ftok(argv[0],'c'))==-1){
 if((shm_sum=ftok(argv[0],'k'))==-1){
 	perror("Error nella creazione della chiave somma c\n");
 }
+
+//===semafori============================================
+// la union serve per controllare i semafori con semctl.
+// nella union impongo a quale valore voglio che venga impostata il semaforo
+union semun {
+	int val;
+	struct semid_ds *buf;
+	ushort *array;
+} st_sem;
+
+int semkey = ftok (argv[0],'p');					// creo le chiavi
+int semid;
+if((semid=semget(semkey, 2, 0666|IPC_EXCL|IPC_CREAT))==-1){
+	perror("Errore semget");
+}
+
+// inizializzo il semaforo del padre a 1 e il figlio a 0 in quanto accede
+// per primo nella memoria condivisa.
+st_sem.val=1;
+if (semctl(semid, PADRE, SETVAL, st_sem) == -1) {
+	perror ("Semaforo PADRE non inizializzato.\n");
+	semctl(semid, 0, IPC_RMID, 0);// in caso di errore tolgo il semaforos
+	exit(1);
+}
+// semaforo figlio
+st_sem.val=0;
+if (semctl(semid,FIGLIO,SETVAL, st_sem)==-1){
+	perror("Semaforo FIGLIO non inizializzato");
+	semctl(semid,0,IPC_RMID,0);
+	exit(1);
+}
+
+//======================================================
 
 
 //Verifico se i parametri inseriti sono corretti
@@ -148,7 +180,7 @@ if((shmid_sum=shmget(shm_sum,sizeof(int),IPC_CREAT|0666))==-1)
 int (*attach_A)[dim];
 int (*attach_B)[dim];
 int (*attach_C)[dim];
-int *shm_sumValue;
+int *shm_sumValue=0;
 attach_A= shmat(shmid_A,NULL,0);
 attach_B=shmat(shmid_B,NULL,0);
 attach_C=shmat(shmid_C,NULL,0);
@@ -165,7 +197,7 @@ for ( i = 0; i < dim; i++) {
 		attach_A[i][j]=matriceA[i][j];
 		attach_B[i][j]=matriceB[i][j];
 		attach_C[i][j]=0;
-		//printf("%i\n", attach_A[i][j]);
+
 	}
 }
 // stampo le matrici a video
@@ -193,10 +225,15 @@ printf("\nNumero processi==>%i\n",nProc);
 for (i=0;i<nProc;i++){
 	pipe(pipes[i]);
 	children=fork();
+	if(children==-1){
+		//stacco la memoria condivisa
+		// stacco i semafori
+		// esco dal programma
+	}
 	if(children==0){
 		// codice del figlio
 		msg msg_parent;
-		int cRiga=0,cCol=0;
+		int cRiga=0,cCol=0,sommaRiga=0;
 		close(pipes[i][WRITE]);
 
 			//printf("figlio %i\n",i );
@@ -219,22 +256,20 @@ for (i=0;i<nProc;i++){
 						cRiga=msg_parent.riga;
 						cCol=msg_parent.colonna;
 
-						//printf("Operazione ==>%c figlio %i\n", msg_parent.operazione,i);
-						//printf("riga==> %i, colonna ==> %i, \n",msg_parent.riga,msg_parent.colonna);
+
 						//int matRiga[dim];
 						int num=0;
 
 						for(j=0;j<dim;j++){
 							attach_C[cRiga][cCol]+=attach_A[cRiga][j]*attach_B[j][cCol];
 							num=attach_C[cRiga][cCol];
-
 						}
 
 						// dire al padre che ho finito
-						//printf("nel figlio%i num ==>%i\n",i,attach_C[cRiga][cCol] );
+
 						toParent.mtype=1;
 						sprintf(toParent.text,"Figlio numero %i finito MOLTIPLICAZIONE con risultato%i",i,num);
-						sleep(rand()%3);
+						sleep(rand()%2);
 						if(msgsnd(queue,&toParent,sizeof(toParent)-sizeof(long),0)==-1){
 								perror("errore sul invio a padre");
 						}
@@ -242,11 +277,18 @@ for (i=0;i<nProc;i++){
 						break;
 					}
 					case 's':{
-						cRiga=msg_parent.riga;
-						cCol=msg_parent.colonna;
-						*shm_sumValue+=attach_A[cRiga][cCol]+attach_B[cRiga][cCol];
-						printf("ricevuto somma da padre\n" );
-						printf("figio %i dice>>>Valore di somma==>%i",i,*shm_sumValue );
+							// ricevo la riga da padre
+							cRiga=msg_parent.riga;
+							for (k=0;k<dim;k++){
+								sommaRiga+=attach_C[cRiga][i];
+							}
+							printf("Somma riga %i\n",sommaRiga);
+
+							// sommo alla somma parziale, la somma della riga
+							*shm_sumValue+=sommaRiga;
+							printf("%i Dice::Somma riga %i, valore in mem ==>%i\n",i,sommaRiga,*shm_sumValue );
+
+						// comunica al padre la fine del operazione
 						break;
 					}
 					default:{
@@ -263,11 +305,7 @@ for (i=0;i<nProc;i++){
 // CODICE DEL PADRE
 if(children >0){
 	int n=0;
-
-
-msg msg_to_child;
-
-
+	msg msg_to_child;
 
 
 // MOLTIPLICAZIONE
@@ -292,28 +330,33 @@ for (i=0;i<dim;i++){
 	}
 }
 
+// resetto n
+n=0;
+
 // SOMMA
 for (i=0;i<dim;i++){
-	close(pipes[i][READ]);
-	for ( j = 0,n=0; j < dim; j++) {
-		msg_to_child.operazione='s';
-		msg_to_child.riga=i;
-		msg_to_child.colonna=j;
+	close(pipes[n][READ]);
+//===============BLOCCO SEMAFORO===============
+	msg_to_child.operazione='s';
+	msg_to_child.riga=i;
+	msg_to_child.colonna=0;
 
-		write(pipes[n][WRITE],&msg_to_child,sizeof(msg_to_child));
-		if(n==nProc-1){
-			n=0;
-		}
-		n++;
-		/*
-		if(msgrcv(queue,&toParent,sizeof(toParent),0,0)==-1){
-			perror("Error message queue");
-			exit(1);
-		}
-		printf("PADRE DICE:%s\n",toParent.text );
+	write(pipes[n][WRITE],&msg_to_child,sizeof(msg_to_child));
+	//printf("mandato %i ==> %i\n",i,n );
+	if(n==nProc-1){
+		n=0;
 	}
-	*/
+	n++;
+	//================BLOCCO SEMAFORO============
+	/*
+	if(msgrcv(queue,&toParent,sizeof(toParent),0,0)==-1){
+	perror("Error message queue");
+	exit(1);
 }
+printf("PADRE DICE:%s\n",toParent.text );
+}
+*/
+
 }
 
 
@@ -326,19 +369,18 @@ for (i=0;i<dim;i++){
 
 
 
-
-
-
-
-
+for ( i = 0,n=0; i < nProc; i++) {
+	msg_to_child.operazione='k';
+	write(pipes[i][WRITE],&msg_to_child,sizeof(msg_to_child));
+}
 
 //sleep(5);
 
+for ( i = 0; i < nProc-1; i++) {
+	wait(NULL); // aspetto la terminazione dei figli
+}
 shmctl(shmid_sum,IPC_RMID,&sharedmemory);
 
-	//for ( i = 0; i < nProc-1; i++) {
-	//	wait(NULL); // aspetto la terminazione dei figli
-	//}
 	for ( i = 0; i < dim; i++) {
 		for(k=0;k<dim;k++){
 			printf("matrice C ==>%i\n",attach_C[i][k] );
@@ -346,23 +388,8 @@ shmctl(shmid_sum,IPC_RMID,&sharedmemory);
 		}
 	}
 
-	for ( i = 0,n=0; i < nProc; i++) {
-			msg_to_child.operazione='k';
-			write(pipes[i][WRITE],&msg_to_child,sizeof(msg_to_child));
-	}
+	// attendo la uccisione dei processi
 }
-
-
-
-
-
-
-	//sleep(2);
-	//wait(NULL);
-
-
-
-//printf("	==========%i=============\n",*shm_sumValue );
 
 
 // elimino la memoria condivisa;
@@ -370,7 +397,8 @@ shmctl(shmid_sum,IPC_RMID,&sharedmemory);
 shmctl(shmid_A,IPC_RMID,&sharedmemory);
 shmctl(shmid_B,IPC_RMID,&sharedmemory);
 shmctl(shmid_C,IPC_RMID,&sharedmemory);
-
+//dealloco il semaforo
+semctl(semid,0,IPC_RMID,0);
 shmdt(NULL);
 
 printf("ho finito \n" );

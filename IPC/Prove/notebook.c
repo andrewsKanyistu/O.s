@@ -279,4 +279,13 @@ return(0);
 	shmdt(attachPoint);
 */
 
+//=======codice per la somma dei valori
+/*
+cRiga=msg_parent.riga;
+cCol=msg_parent.colonna;
+*shm_sumValue+=attach_A[cRiga][cCol]+attach_B[cRiga][cCol];
+sleep(1);
+//printf("ricevuto somma da padre\n" );
+printf("\nfigio %i dice>>>Valore di somma==>%i\n riga=%i, colonna = %i",i,*shm_sumValue ,attach_A[cRiga][cCol],attach_B[cRiga][cCol]);*/
+
 }
