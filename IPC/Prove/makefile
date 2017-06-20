@@ -1,6 +1,28 @@
-all: es2
+# Sources
+SRCS= es2.c
+OBJS=$(SRCS:.c=.o)
+EXECUTABLE=es2
 
-test: es2.o
-	g++ es2.o -o test
+# Config
+CC=gcc
+CFLAGS= -c 
+LD=gcc
+
+# Target
+
+all: $(EXECUTABLE)  
+	@echo Building $(EXECUTABLE)
+
+$(EXECUTABLE): $(OBJS)
+	$(CC) -o $@ $<
+
+$(OBJS): $(SRCS) 
+	$(CC) $(CFLAGS) -o $(OBJS) $< 
+
+
 clean:
-	rm  *.o test
+	rm -f $(EXECUTABLE)
+	rm -f $(OBJS)
+
+
+.PHONY: all clean

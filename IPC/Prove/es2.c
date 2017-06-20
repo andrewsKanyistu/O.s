@@ -10,6 +10,7 @@
 #include <sys/sem.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <semaphore.h>
 #include <time.h>
 #include <sys/msg.h>
 #define PADRE 0		// identificativo del padre nel vettore di semafori
@@ -19,7 +20,7 @@
 #ifndef SIZE
 #define SIZE 4096   // dimensione in bytes da leggere da file
 #endif
-
+int semid;
 typedef struct {
 	char operazione;    		//messaggio da mandare ai figli
 	int riga;
@@ -31,12 +32,19 @@ typedef struct {
 	char text[SIZE];
 }msg_queue;
 
+// implemeto la wait per i semafori
+
+
+// implementazione dela signal per i semafori
+
+
 int main(int argc, char *argv[]){
 int fd_matriceA;
 int fd_matriceB;
 int fd_matriceC;
 int i=0,j=0,k=0;											// variabili contatore
 char *token;
+struct sembuf wait_sem,signal_sem;
 struct shmid_ds sharedmemory;
 msg_queue toParent;
 char bufferA[SIZE];
@@ -75,7 +83,7 @@ union semun {
 } st_sem;
 
 int semkey = ftok (argv[0],'p');					// creo le chiavi
-int semid;
+
 if((semid=semget(semkey, 2, 0666|IPC_EXCL|IPC_CREAT))==-1){
 	perror("Errore semget");
 }
@@ -282,11 +290,38 @@ for (i=0;i<nProc;i++){
 							for (k=0;k<dim;k++){
 								sommaRiga+=attach_C[cRiga][i];
 							}
-							printf("Somma riga %i\n",sommaRiga);
+							// wait figlio
+							wait_sem.sem_num=FIGLIO;
+							wait_sem.sem_op=-1;
+							wait_sem.sem_flg=0;
 
+							if((semop(semid,&wait_sem,1))==-1){
+								perror("wait fallita nel figlio\n");
+								exit(1);
+							}
+							printf("sono nel semaforo\n" );
+
+							sleep(1);
+							printf("Somma riga %i\n",sommaRiga);
 							// sommo alla somma parziale, la somma della riga
 							*shm_sumValue+=sommaRiga;
+
+							//======
+							signal_sem.sem_num=PADRE;
+							signal_sem.sem_op=1;			// signal_sem
+							signal_sem.sem_flg=0;
+
+							if((semop(semid,&signal_sem,1)==-1)){
+								perror("signal del padre");
+							}
+
 							printf("%i Dice::Somma riga %i, valore in mem ==>%i\n",i,sommaRiga,*shm_sumValue );
+							toParent.mtype=1;
+							sprintf(toParent.text,"Figlio numero %i finito SOMMA con risultato%i",i,*shm_sumValue);
+							sleep(rand()%2);
+							if(msgsnd(queue,&toParent,sizeof(toParent)-sizeof(long),0)==-1){
+									perror("errore sul invio a padre");
+							}
 
 						// comunica al padre la fine del operazione
 						break;
@@ -320,8 +355,9 @@ for (i=0;i<dim;i++){
 		write(pipes[n][WRITE],&msg_to_child,sizeof(msg_to_child));
 		if(n==nProc-1){
 			n=0;
+		}else{
+			n++;
 		}
-		n++;
 		if(msgrcv(queue,&toParent,sizeof(toParent),0,0)==-1){
 			perror("Error message queue");
 			exit(1);
@@ -337,48 +373,70 @@ n=0;
 for (i=0;i<dim;i++){
 	close(pipes[n][READ]);
 //===============BLOCCO SEMAFORO===============
+
+//inizio fase di wait del padre
+	wait_sem.sem_num=PADRE;
+	wait_sem.sem_op=-1;
+	wait_sem.sem_flg=0;
+
+	if((semop(semid,&wait_sem,1))==-1){
+		printf("wait fallita nel padre\n");
+		exit(1);
+	}
+
+
 	msg_to_child.operazione='s';
 	msg_to_child.riga=i;
 	msg_to_child.colonna=0;
 
 	write(pipes[n][WRITE],&msg_to_child,sizeof(msg_to_child));
 	//printf("mandato %i ==> %i\n",i,n );
+
 	if(n==nProc-1){
 		n=0;
+	}else{
+		n++;
 	}
-	n++;
-	//================BLOCCO SEMAFORO============
-	/*
-	if(msgrcv(queue,&toParent,sizeof(toParent),0,0)==-1){
-	perror("Error message queue");
-	exit(1);
+
+
+	//=======sveglio Un eventaule figlio in attesa====
+		signal_sem.sem_num=FIGLIO;
+		signal_sem.sem_op=1;			// signal_sem
+		signal_sem.sem_flg=0;
+
+		if((semop(semid,&signal_sem,1)==-1)){
+			perror("Errore signal figlio\n");
+		}
+
+		if(msgrcv(queue,&toParent,sizeof(toParent),0,0)==-1){
+			perror("Error message queue");
+			exit(1);
+		}
+
+
+
 }
-printf("PADRE DICE:%s\n",toParent.text );
-}
-*/
-
-}
-
-
-
-
-
-
-
-
-
-
-
 for ( i = 0,n=0; i < nProc; i++) {
 	msg_to_child.operazione='k';
 	write(pipes[i][WRITE],&msg_to_child,sizeof(msg_to_child));
 }
-
-//sleep(5);
-
 for ( i = 0; i < nProc-1; i++) {
 	wait(NULL); // aspetto la terminazione dei figli
 }
+
+
+
+
+
+
+
+
+
+
+
+
+//sleep(5);
+
 shmctl(shmid_sum,IPC_RMID,&sharedmemory);
 
 	for ( i = 0; i < dim; i++) {
