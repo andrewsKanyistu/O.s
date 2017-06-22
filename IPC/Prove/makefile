@@ -1,5 +1,5 @@
 # Sources
-SRCS= es2.c
+SRCS= es2threads.c
 OBJS=$(SRCS:.c=.o)
 EXECUTABLE=es2
 
@@ -14,10 +14,10 @@ all: $(EXECUTABLE)
 	@echo Building $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJS)
-	$(CC) -o $@ $<
+	$(CC) -pthread -o $@ $<
 
 $(OBJS): $(SRCS) 
-	$(CC) $(CFLAGS) -o $(OBJS) $< 
+	$(CC) $(CFLAGS) -pthread -o  $(OBJS) $< 
 
 
 clean:

@@ -22,30 +22,28 @@
 #define SIZE 4096   // dimensione in bytes da leggere da file
 #endif
 int semid;
+
 typedef struct {
-	char operazione;    		//messaggio da mandare ai figli
-	int riga;
-	int colonna;
-	int dimensione;
+ char operazione;    		//messaggio da mandare ai figli
+ int riga;
+ int colonna;
+
+
+ int (*matr)[dim];
+ int (*matrB)[100];
+ int (*matrC)[100];
 }msg;
-typedef struct {
-	long mtype;
-	char text[SIZE];
-}msg_queue;
-
-
 
 void * threadFiglio (void * args){
 	 msg* daPadre=(msg * )args;
-	 int riga= daPadre->riga;
-	 printf("thread uno, riga==%i, colonna==>%i",riga,riga);
-
-
-
-return NULL;
+	 int riga= daPadre->riga,colonna=daPadre->colonna;
+	 printf("thread uno, riga==%i, colonna==>%i",riga,colonna);
+	// printf("atacch vale %i\n",attach_A[i][j] );
+	 return NULL;
 }
 
 
+void * threadFiglio (void *args);
 
 
 int main(int argc, char *argv[]){
@@ -55,13 +53,14 @@ int fd_matriceC;
 int i=0,j=0;											// variabili contatore
 char *token;
 
+
 struct shmid_ds sharedmemory;
 
 char bufferA[SIZE];
 char bufferB[SIZE];
 char bufferC[SIZE];
 int shmid_A=0,shmid_B=0,shmid_C=0,shmid_sum;		// id per modificare la memoria condivisa
-const int dim=atoi(argv[3]); 					// dimensione delle matrici
+static const int dim=atoi(argv[4]); 					// dimensione delle matrici
 
 //matrici dove verranno salvati i dati letti da disco
 int matriceA[dim][dim];
@@ -176,6 +175,7 @@ shm_sumValue= (int *)shmat(shmid_sum,NULL,0);
 
 
 
+
 // copio le matrici A e B in memoria condivisa
 for ( i = 0; i < dim; i++) {
 	for(j=0;j<dim;j++){
@@ -190,22 +190,25 @@ for ( i = 0; i < dim; i++) {
 
 srand(time(NULL));
 
-printf("Ci sono quasi \n" );
-msg toThread;
-toThread.operazione='s';
-toThread.riga=1;
-toThread.colonna=1;
 
+msg toParent;
+toParent.operazione='s';
+toParent.riga=1;
+toParent.colonna=300;
+toParent.matr=attach_A;
 // CODICE DEL PADRE
 
 // implementazione dei thread
 pthread_t singola;
 
-if (pthread_create(&singola,NULL,threadFiglio,&toThread)==-1){
+if (pthread_create(&singola,NULL,&threadFiglio,&toParent) != 0){
+
+	perror("oops" );
 
 }
-
-
+else{
+	printf("Thread created successfully" );
+}
 
 shmctl(shmid_sum,IPC_RMID,&sharedmemory);
 
