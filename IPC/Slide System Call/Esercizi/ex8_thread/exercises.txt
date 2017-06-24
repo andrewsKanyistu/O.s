@@ -1,0 +1,48 @@
+(ex1)
+Utilizzando le thread, completare il programma matrix_thread.c
+per eseguire la moltiplicazione	riga per colonna tra due matrici (10 x 10).
+Creare una thread separata per ogni elemento della matrice risultato.
+Fare in modo che la thread principale attenda (con un join) la terminazione
+di tutte le thread prima di stampare a video la matrice finale.
+Il file matrix_serial.c contiene un programma che calcola il prodotto
+senza usare le thread.
+
+********************************************************************************
+
+(ex2)
+Utilizzando le thread, completare il programma dotprod_mutex.c
+che esegue il prodotto scalare tra due vettori ciascuno composto
+da 100 elementi.
+Creare 4 thread, che calcolino il risultato della moltiplicazione per
+blocchi di 25 elementi ciascuna.
+Utilizzare i mutex per sincronizzare l'utilizzo della risorsa
+critica rappresentata dalla variabile globale che contiene il valore
+del risultato del prodotto scalare.
+
+********************************************************************************
+
+(ex3)
+Realizzare un programma multithread per classificare i numeri presenti
+all'interno di un insieme di file. Creare un thread per ogni file da
+analizzare.
+
+Linea di comando: cmp_list.x <file1> ... <fileN>
+
+I file di input devono contenere una lista di 10000 numeri casuali con
+un valore compreso tra 0 e 10000.
+Il file di output dovrà essere così composto:
+
+Num	file1	file2		...		fileN
+0	X					X
+1		X				X
+2	X
+3
+4	X	X				X
+5	X
+...	...	...
+
+La presenza della X indica la presenza del relativo numero all'interno del
+file.
+
+Il programma scrivi_file.x puo' essere usato per creare un file contenente
+un numero arbitrario di numeri casuali.

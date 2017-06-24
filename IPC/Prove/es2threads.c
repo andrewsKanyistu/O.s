@@ -5,12 +5,10 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/sem.h>
+
 #include <sys/wait.h>
 #include <unistd.h>
-#include <semaphore.h>
+
 #include <time.h>
 #include <pthread.h>
 #include <sys/msg.h>
@@ -27,23 +25,39 @@ typedef struct {
  char operazione;    		//messaggio da mandare ai figli
  int riga;
  int colonna;
-
-
- int (*matr)[dim];
- int (*matrB)[100];
- int (*matrC)[100];
+int **matA,**matB,**matC;
+int dimensione;
 }msg;
 
 void * threadFiglio (void * args){
-	 msg* daPadre=(msg * )args;
-	 int riga= daPadre->riga,colonna=daPadre->colonna;
-	 printf("thread uno, riga==%i, colonna==>%i",riga,colonna);
-	// printf("atacch vale %i\n",attach_A[i][j] );
+
+	 msg* data=(msg * )args;
+   int riga=data->riga;
+   int colonna = data->colonna;
+   char operazione = data->operazione;
+   int **matriceC=data->matC;
+   int **matriceA=data->matA;
+   int **matriceB=data->matB;
+   int dimensione=data->dimensione;
+   printf("riga=> %i\t colonna =>%i\t operazione==>%c\t\n",riga,colonna,data->operazione);
+   int i=0;
+
+   switch(operazione){
+     case 'm':{
+       for(i=0;i < dimensione ;i++){
+         matriceC[riga][colonna]+=(matriceA[riga][i]*matriceB[i][colonna]);
+         //printf("matc==>%i,\triga=>%i,\t colonna->%i\n",matriceC[riga][colonna],riga,colonna );
+       }
+       break;
+     }
+   }
+
+  free(data);
+//  pthread_exit(NULL);
 	 return NULL;
 }
 
 
-void * threadFiglio (void *args);
 
 
 int main(int argc, char *argv[]){
@@ -54,46 +68,24 @@ int i=0,j=0;											// variabili contatore
 char *token;
 
 
-struct shmid_ds sharedmemory;
+
 
 char bufferA[SIZE];
 char bufferB[SIZE];
 char bufferC[SIZE];
-int shmid_A=0,shmid_B=0,shmid_C=0,shmid_sum;		// id per modificare la memoria condivisa
-static const int dim=atoi(argv[4]); 					// dimensione delle matrici
+
+ const int dim=atoi(argv[4]); 					// dimensione delle matrici
 
 //matrici dove verranno salvati i dati letti da disco
 int matriceA[dim][dim];
 int matriceB[dim][dim];
 int matriceC[dim][dim];
 
-// generazione della chiave per la memoria condivisa A;B;C e per la somma
-key_t shm_key,shm_keyB,shm_keyC,shm_sum;
-if((shm_key=ftok(argv[0],'a'))==-1){
-	perror("Error nella creazione della chiave\n");
-}
-if((shm_keyB=ftok(argv[0],'b'))==-1){
-	perror("Error nella creazione della chiave\n");
-}
-if((shm_keyC=ftok(argv[0],'c'))==-1){
-	perror("Error nella creazione della chiave matrice c\n");
-}
-if((shm_sum=ftok(argv[0],'k'))==-1){
-	perror("Error nella creazione della chiave somma c\n");
-}
-
-
-
-
-
 //Verifico se i parametri inseriti sono corretti
 if(argc < 5){
 	printf(" Numero di argomenti insufficienti o non corretti\n" );
 	exit(1);
 }
-
-
-
 
 
 // apro i files
@@ -150,79 +142,75 @@ while(token != NULL){
 }
 
 
-// == sezione shared memory=====
 
-if((shmid_A=shmget(shm_key,sizeof(matriceA),IPC_CREAT|0666))==-1)
-	printf("Shared memory failed on A\n");
+int **ptrA= (int**)malloc(dim*sizeof(int * ));
+int **ptrB= (int**)malloc(dim*sizeof(int * ));
+int **ptrC= (int**)malloc(dim*sizeof(int * ));
 
-if((shmid_B=shmget(shm_keyB,sizeof(matriceB),IPC_CREAT|0666))==-1)
-	printf("Shared memory failed on B\n");
-
-if((shmid_C=shmget(shm_keyC,sizeof(matriceC),IPC_CREAT|0666))==-1)
-	printf("Shared memory failed on C\n");
-
-if((shmid_sum=shmget(shm_sum,sizeof(int),IPC_CREAT|0666))==-1)
-	printf("Shared memory failed on sum\n");
-
-int (*attach_A)[dim];
-int (*attach_B)[dim];
-int (*attach_C)[dim];
-int *shm_sumValue=0;
-attach_A= shmat(shmid_A,NULL,0);
-attach_B=shmat(shmid_B,NULL,0);
-attach_C=shmat(shmid_C,NULL,0);
-shm_sumValue= (int *)shmat(shmid_sum,NULL,0);
+for(i=0;i<dim;i++){
+  ptrA[i]=(int *)malloc(sizeof(int));
+  ptrB[i]=(int *)malloc(sizeof(int));
+  ptrC[i]=(int *)malloc(sizeof(int));
+}
 
 
+for(i=0;i<dim;i++){
+  for(j=0;j<dim;j++){
+
+    ptrA[i][j]=matriceA[i][j];
+    ptrB[i][j]=matriceB[i][j];
+  }
+}
 
 
-// copio le matrici A e B in memoria condivisa
+// implementazione dei thread
+pthread_t singola[dim][dim];
+msg *toParent;
+
+//moltiplicazione
+for(i=0;i<dim;i++){
+  for(j=0;j<dim;j++){
+    toParent=(msg *) malloc(sizeof(msg));
+    toParent->matA=ptrA;
+    toParent->matB=ptrB;
+    toParent->matC=ptrC;
+    toParent->dimensione=dim;
+    toParent->operazione='m';
+    toParent->riga=i;
+    toParent->colonna=j;
+    if(pthread_create(&singola[i][j],NULL,&threadFiglio,(void *)toParent)<0){
+      printf("C'è stato un errore nella creazione del thread");
+    }
+
+  }
+}
+
+
 for ( i = 0; i < dim; i++) {
 	for(j=0;j<dim;j++){
-
-		attach_A[i][j]=matriceA[i][j];
-		attach_B[i][j]=matriceB[i][j];
-		attach_C[i][j]=0;
+	   pthread_join(singola[i][j],NULL);
+	}
+}
+for ( i = 0; i < dim; i++) {
+	for(j=0;j<dim;j++){
+	  printf("%i \t",ptrC[i][j] );
+    if(j==dim-1){
+      printf("\n" );
+    }
 
 	}
 }
 
 
-srand(time(NULL));
 
-
-msg toParent;
-toParent.operazione='s';
-toParent.riga=1;
-toParent.colonna=300;
-toParent.matr=attach_A;
-// CODICE DEL PADRE
-
-// implementazione dei thread
-pthread_t singola;
-
-if (pthread_create(&singola,NULL,&threadFiglio,&toParent) != 0){
-
-	perror("oops" );
+for(i=0;i<dim;i++){
+  free(ptrA[i]);
+  free(ptrB[i]);
+  free(ptrC[i]);
 
 }
-else{
-	printf("Thread created successfully" );
-}
 
-shmctl(shmid_sum,IPC_RMID,&sharedmemory);
-
-
-
-
-
-
-// elimino la memoria condivisa;
-
-shmctl(shmid_A,IPC_RMID,&sharedmemory);
-shmctl(shmid_B,IPC_RMID,&sharedmemory);
-shmctl(shmid_C,IPC_RMID,&sharedmemory);
-//dealloco il semaforo
+printf("padre ha finito tutto\n" );
 
 
 }
