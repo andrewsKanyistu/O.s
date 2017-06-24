@@ -17,7 +17,7 @@ $(EXECUTABLE): $(OBJS)
 	$(CC) -pthread -o $@ $<
 
 $(OBJS): $(SRCS) 
-	$(CC) $(CFLAGS) -pthread -o  $(OBJS) $< 
+	$(CC) $(CFLAGS) -lpthread -o  $(OBJS) $< 
 
 
 clean:

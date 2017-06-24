@@ -184,7 +184,7 @@ if((shmid_C=shmget(shm_keyC,sizeof(matriceC),IPC_CREAT|0666))==-1)
 
 if((shmid_sum=shmget(shm_sum,sizeof(int),IPC_CREAT|0666))==-1)
 	printf("Shared memory failed on sum\n");
-
+//== zona pe la memoria condivisa
 int (*attach_A)[dim];
 int (*attach_B)[dim];
 int (*attach_C)[dim];
@@ -193,6 +193,7 @@ attach_A= shmat(shmid_A,NULL,0);
 attach_B=shmat(shmid_B,NULL,0);
 attach_C=shmat(shmid_C,NULL,0);
 shm_sumValue= (int *)shmat(shmid_sum,NULL,0);
+
 int queue;
 if((queue=msgget(IPC_PRIVATE,(IPC_CREAT|0660))==-1))
 	printf("Failed Creation message queue\n" );
@@ -208,7 +209,7 @@ for ( i = 0; i < dim; i++) {
 
 	}
 }
-// stampo le matrici a video
+// stampo le matrici su schermo
 for ( i = 0; i < dim; i++) {
 	for(j=0;j<dim;j++){
 		if(j==dim-1){
@@ -228,7 +229,7 @@ srand(time(NULL));
 pid_t children;
 int pipes[nProc-1][2];
 printf("\nNumero processi==>%i\n",nProc);
-// read==>0 write===>1
+
 
 for (i=0;i<nProc;i++){
 	pipe(pipes[i]);
@@ -244,7 +245,6 @@ for (i=0;i<nProc;i++){
 		int cRiga=0,cCol=0,sommaRiga=0;
 		close(pipes[i][WRITE]);
 
-			//printf("figlio %i\n",i );
 			// chiudo la pipe in scrittura
 			int status;
 
@@ -255,7 +255,7 @@ for (i=0;i<nProc;i++){
 
 				switch (msg_parent.operazione) {
 					case 'k':{
-						//printf("asfdifhbud ==>%c figlio %i\n", msg_parent.operazione,i);
+						
 						printf("figlio %i terminato\n",i );
 						exit(0);
 						break;
@@ -308,13 +308,14 @@ for (i=0;i<nProc;i++){
 
 							//======
 							signal_sem.sem_num=PADRE;
-							signal_sem.sem_op=1;			// signal_sem
+							signal_sem.sem_op=1;			// signal_semaforo padre
 							signal_sem.sem_flg=0;
 
 							if((semop(semid,&signal_sem,1)==-1)){
 								perror("signal del padre");
 							}
 
+							// comunica al padre la fine del operazione
 							printf("%i Dice::Somma riga %i, valore in mem ==>%i\n",i,sommaRiga,*shm_sumValue );
 							toParent.mtype=1;
 							sprintf(toParent.text,"Figlio numero %i finito SOMMA con risultato%i",i,*shm_sumValue);
@@ -323,7 +324,7 @@ for (i=0;i<nProc;i++){
 									perror("errore sul invio a padre");
 							}
 
-						// comunica al padre la fine del operazione
+						
 						break;
 					}
 					default:{

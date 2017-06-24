@@ -22,12 +22,15 @@
 int semid;
 
 typedef struct {
- char operazione;    		//messaggio da mandare ai figli
+ char operazione;    		//messaggio da mandare ai  thread figli
  int riga;
  int colonna;
 int **matA,**matB,**matC;
+int *somma;
 int dimensione;
 }msg;
+
+pthread_mutex_t mutex;        // mutex per la sincronizzazione dei figli
 
 void * threadFiglio (void * args){
 
@@ -44,16 +47,32 @@ void * threadFiglio (void * args){
 
    switch(operazione){
      case 'm':{
+
+      // sleep(1);
        for(i=0;i < dimensione ;i++){
          matriceC[riga][colonna]+=(matriceA[riga][i]*matriceB[i][colonna]);
-         //printf("matc==>%i,\triga=>%i,\t colonna->%i\n",matriceC[riga][colonna],riga,colonna );
+         printf("matc==>%i,\triga=>%i,\t colonna->%i\n",matriceC[riga][colonna],riga,colonna );
        }
+
+       break;
+     }
+     case 's':{
+       //  faccio la somma della riga
+       int temp=0;
+       for (i=0;i<dimensione;i++){
+         temp+=matriceC[i][0];
+       }
+       pthread_mutex_lock(&mutex);
+       //  printf("ricevuto somma da padre\n" );
+       sleep(1);
+       *data->somma+=temp;
+       pthread_mutex_unlock(&mutex);
        break;
      }
    }
 
   free(data);
-//  pthread_exit(NULL);
+
 	 return NULL;
 }
 
@@ -142,10 +161,11 @@ while(token != NULL){
 }
 
 
-
+//allocazione di memoria per il valore che terra la somma e i vari vettori
 int **ptrA= (int**)malloc(dim*sizeof(int * ));
 int **ptrB= (int**)malloc(dim*sizeof(int * ));
 int **ptrC= (int**)malloc(dim*sizeof(int * ));
+int * sum =(int *) malloc(sizeof(int));
 
 for(i=0;i<dim;i++){
   ptrA[i]=(int *)malloc(sizeof(int));
@@ -161,6 +181,11 @@ for(i=0;i<dim;i++){
     ptrB[i][j]=matriceB[i][j];
   }
 }
+
+// inizializzazione del mutex
+pthread_mutex_init(&mutex,NULL);
+
+
 
 
 // implementazione dei thread
@@ -178,11 +203,34 @@ for(i=0;i<dim;i++){
     toParent->operazione='m';
     toParent->riga=i;
     toParent->colonna=j;
+
     if(pthread_create(&singola[i][j],NULL,&threadFiglio,(void *)toParent)<0){
       printf("C'è stato un errore nella creazione del thread");
+      //esco dal programma perche non riesco a creare le threads.
+      exit(0);
     }
 
   }
+}
+
+for(i=0;i<dim;i++){
+
+    toParent=(msg *) malloc(sizeof(msg));
+    toParent->matA=ptrA;
+    toParent->matB=ptrB;
+    toParent->matC=ptrC;
+    toParent->dimensione=dim;
+    toParent->operazione='s';
+    toParent->riga=i;
+    toParent->colonna=0;
+    toParent->somma=sum;
+    if(pthread_create(&singola[i][0],NULL,&threadFiglio,(void *)toParent)<0){
+      printf("C'è stato un errore nella creazione del thread");
+      //esco dal programma perche non riesco a creare le threads.
+      exit(0);
+    }
+
+
 }
 
 
@@ -201,7 +249,7 @@ for ( i = 0; i < dim; i++) {
 	}
 }
 
-
+printf("somma vale ==> %i\n",*sum );
 
 for(i=0;i<dim;i++){
   free(ptrA[i]);
@@ -209,6 +257,7 @@ for(i=0;i<dim;i++){
   free(ptrC[i]);
 
 }
+pthread_mutex_destroy(&mutex);
 
 printf("padre ha finito tutto\n" );
 
